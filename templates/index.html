@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediaScan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─── RESET & BASE ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0a0b0e;
+  --panel:     #111318;
+  --panel2:    #181b22;
+  --panel3:    #1e222b;
+  --line:      #262c38;
+  --line2:     #313847;
+  --txt:       #e2e8f4;
+  --txt2:      #8b93a7;
+  --txt3:      #50586a;
+  --accent:    #6c8fff;
+  --accent-bg: rgba(108,143,255,.10);
+  --green:     #34d399;
+  --green-bg:  rgba(52,211,153,.10);
+  --red:       #f87171;
+  --red-bg:    rgba(248,113,113,.10);
+  --amber:     #fbbf24;
+  --amber-bg:  rgba(251,191,36,.10);
+  --radius:    10px;
+  --shadow:    0 1px 3px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+}
+
+html { font-size: 14px; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--txt);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── LAYOUT ───────────────────────────────────────────── */
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: 220px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  z-index: 50;
+}
+
+.sidebar-logo {
+  padding: 22px 20px 18px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.logo-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, #6c8fff 0%, #a78bfa 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; flex-shrink: 0;
+}
+
+.logo-text {
+  font-size: 15px; font-weight: 600; color: var(--txt);
+  letter-spacing: -.2px;
+}
+
+.logo-text span { color: var(--txt2); font-weight: 400; font-size: 12px; display: block; margin-top: 1px; }
+
+.sidebar-section {
+  padding: 16px 12px 8px;
+  font-size: 10px; font-weight: 600;
+  color: var(--txt3); letter-spacing: 1px; text-transform: uppercase;
+}
+
+.nav-item {
+  margin: 2px 8px; padding: 9px 12px;
+  border-radius: 7px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 500; color: var(--txt2);
+  cursor: pointer; transition: all .15s;
+  user-select: none;
+}
+.nav-item:hover   { background: var(--panel2); color: var(--txt); }
+.nav-item.active  { background: var(--accent-bg); color: var(--accent); }
+.nav-item .ni     { font-size: 15px; width: 20px; text-align: center; }
+
+.sidebar-footer {
+  margin-top: auto; padding: 14px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 11px; color: var(--txt3);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.main-wrap {
+  margin-left: 220px;
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+}
+
+.topbar {
+  height: 56px; padding: 0 28px;
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 40;
+}
+
+.topbar-title { font-size: 15px; font-weight: 600; }
+.topbar-sep { flex: 1; }
+
+.content { padding: 28px; flex: 1; }
+
+/* ─── CARDS ─────────────────────────────────────────────── */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: 18px;
+}
+
+.card-head {
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.card-title { font-size: 13px; font-weight: 600; color: var(--txt); }
+.card-sub   { font-size: 12px; color: var(--txt3); margin-left: auto; }
+
+.card-body { padding: 20px; }
+
+/* ─── INPUTS ─────────────────────────────────────────────── */
+.field-row {
+  display: flex; gap: 8px; align-items: stretch;
+}
+
+.field {
+  flex: 1; position: relative;
+}
+
+.field-icon {
+  position: absolute; left: 13px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--txt3); font-size: 14px;
+  pointer-events: none;
+}
+
+input[type=text] {
+  width: 100%; height: 42px;
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  color: var(--txt);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  padding: 0 14px 0 38px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input[type=text]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(108,143,255,.15);
+}
+input[type=text]::placeholder { color: var(--txt3); }
+
+/* ─── BUTTONS ────────────────────────────────────────────── */
+.btn {
+  height: 42px; padding: 0 18px;
+  border: none; border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+  transition: all .15s;
+  display: inline-flex; align-items: center; gap: 7px;
+  flex-shrink: 0;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(108,143,255,.3);
+}
+.btn-primary:hover {
+  background: #5a7ef0;
+  box-shadow: 0 4px 12px rgba(108,143,255,.4);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: none; }
+
+.btn-default {
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  color: var(--txt);
+}
+.btn-default:hover { background: var(--panel3); border-color: var(--line); }
+
+.btn-subtle {
+  background: transparent;
+  border: 1px solid var(--line2);
+  color: var(--txt2);
+}
+.btn-subtle:hover { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+/* ─── PROGRESS ───────────────────────────────────────────── */
+.progress-area { display: none; margin-top: 14px; }
+
+.progress-track {
+  height: 2px; background: var(--line);
+  border-radius: 1px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; width: 30%;
+  background: linear-gradient(90deg, var(--accent), #a78bfa);
+  animation: run 1.6s ease-in-out infinite;
+}
+@keyframes run { 0%{transform:translateX(-200%)} 100%{transform:translateX(500%)} }
+
+.progress-msg {
+  margin-top: 8px; font-size: 12px; color: var(--txt3);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ─── STATS ──────────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px; margin-bottom: 18px;
+}
+
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  position: relative; overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.stat-card.blue::before  { background: linear-gradient(90deg, var(--accent), #a78bfa); }
+.stat-card.green::before { background: var(--green); }
+.stat-card.red::before   { background: var(--red); }
+.stat-card.amber::before { background: var(--amber); }
+
+.stat-label {
+  font-size: 11px; font-weight: 500;
+  color: var(--txt3); text-transform: uppercase; letter-spacing: .8px;
+  margin-bottom: 10px;
+}
+
+.stat-val {
+  font-size: 30px; font-weight: 300; color: var(--txt);
+  line-height: 1; letter-spacing: -1px;
+}
+
+.stat-card.green .stat-val { color: var(--green); }
+.stat-card.red   .stat-val { color: var(--red); }
+.stat-card.amber .stat-val { font-size: 20px; font-weight: 400; color: var(--amber); }
+
+/* ─── FILTERS ────────────────────────────────────────────── */
+.filter-bar {
+  display: flex; gap: 8px; align-items: center;
+  flex-wrap: wrap; margin-bottom: 16px;
+}
+
+.filter-label { font-size: 12px; color: var(--txt3); }
+
+.search-wrap { position: relative; }
+
+input.filter-input {
+  height: 36px; width: 200px; font-size: 13px;
+  padding: 0 12px 0 34px;
+  border-radius: 7px;
+}
+
+.search-icon {
+  position: absolute; left: 11px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--txt3); font-size: 13px; pointer-events: none;
+}
+
+select {
+  height: 36px; padding: 0 30px 0 11px;
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  border-radius: 7px;
+  color: var(--txt2); font-family: 'Inter', sans-serif; font-size: 13px;
+  outline: none; cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2350586a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center;
+  transition: border-color .15s;
+}
+select:focus  { border-color: var(--accent); outline: none; }
+select:hover  { border-color: var(--line); }
+
+.btn-sm {
+  height: 36px; padding: 0 14px;
+  font-size: 12px; border-radius: 7px;
+}
+
+/* ─── TABLE ──────────────────────────────────────────────── */
+.table-outer {
+  border: 1px solid var(--line);
+  border-radius: 8px; overflow: hidden;
+}
+
+table { width: 100%; border-collapse: collapse; }
+
+thead {
+  background: var(--panel2);
+}
+
+th {
+  padding: 10px 14px;
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .7px;
+  color: var(--txt3); text-align: left;
+  white-space: nowrap; cursor: pointer; user-select: none;
+  border-bottom: 1px solid var(--line);
+  transition: color .12s;
+}
+th:hover { color: var(--txt2); }
+th .si { margin-left: 3px; }
+th.asc  .si::after { content: ' ↑'; color: var(--accent); opacity: 1; }
+th.desc .si::after { content: ' ↓'; color: var(--accent); opacity: 1; }
+th:not(.asc):not(.desc) .si::after { content: ' ↕'; opacity: .3; }
+
+tbody tr { border-bottom: 1px solid var(--line); transition: background .1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--panel2); }
+
+td { padding: 11px 14px; font-size: 13px; color: var(--txt2); }
+
+td.td-file { max-width: 300px; }
+
+.f-name {
+  color: var(--txt); font-size: 13px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
+}
+
+.f-path {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--txt3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
+  margin-top: 2px;
+}
+
+/* Badges */
+.tag {
+  display: inline-block; padding: 2px 8px;
+  border-radius: 5px; font-size: 11px; font-weight: 600;
+  letter-spacing: .3px; white-space: nowrap;
+}
+.tag-green  { background: var(--green-bg); color: var(--green); }
+.tag-blue   { background: var(--accent-bg); color: var(--accent); }
+.tag-amber  { background: var(--amber-bg); color: var(--amber); }
+.tag-muted  { background: var(--panel3); color: var(--txt2); }
+.tag-red    { background: var(--red-bg); color: var(--red); }
+
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 11px; border-radius: 20px;
+  font-size: 12px; font-weight: 500;
+}
+.pill-good { background: var(--green-bg); color: var(--green); }
+.pill-bad  { background: var(--red-bg);   color: var(--red); }
+
+.pill-dot { width: 6px; height: 6px; border-radius: 50%; }
+.pill-good .pill-dot { background: var(--green); }
+.pill-bad  .pill-dot { background: var(--red); animation: pulse .8s ease infinite alternate; }
+@keyframes pulse { from{opacity:.4} to{opacity:1} }
+
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+.btn-edit {
+  height: 30px; padding: 0 12px;
+  background: var(--panel2); border: 1px solid var(--line2);
+  border-radius: 6px; color: var(--txt2);
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+  transition: all .15s;
+}
+.btn-edit:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+
+/* Audio tracks */
+.audio-tracks { display: flex; flex-wrap: wrap; gap: 4px; max-width: 220px; }
+
+/* ─── EMPTY ──────────────────────────────────────────────── */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 80px 20px; text-align: center;
+}
+.empty-icon { font-size: 52px; margin-bottom: 18px; opacity: .25; }
+.empty-title { font-size: 17px; font-weight: 600; color: var(--txt); margin-bottom: 6px; }
+.empty-sub   { font-size: 13px; color: var(--txt3); max-width: 340px; line-height: 1.6; }
+
+/* ─── ERRORS ─────────────────────────────────────────────── */
+.err-box {
+  margin-top: 12px; padding: 12px 16px;
+  background: var(--red-bg); border: 1px solid rgba(248,113,113,.2);
+  border-radius: 8px;
+}
+.err-box h4 { color: var(--red); font-size: 12px; margin-bottom: 6px; }
+.err-box li { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--txt3); list-style: none; padding: 1px 0; }
+.err-box li::before { content: '× '; color: var(--red); }
+
+/* ─── TOAST ──────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 22px; right: 22px;
+  background: var(--panel2); border: 1px solid var(--line2);
+  border-radius: 9px; padding: 11px 16px;
+  font-size: 13px; color: var(--txt);
+  box-shadow: var(--shadow);
+  z-index: 9999; opacity: 0; transform: translateY(6px);
+  transition: all .2s; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: none; }
+
+/* ─── MODAL (folder browser) ─────────────────────────────── */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(6px);
+  z-index: 200;
+  align-items: center; justify-content: center;
+}
+.overlay.open { display: flex; }
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  width: 580px; max-width: 94vw; max-height: 76vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0,0,0,.7);
+  animation: pop .16s cubic-bezier(.22,.68,0,1.2);
+  overflow: hidden;
+}
+
+@keyframes pop {
+  from { opacity:0; transform: scale(.94) translateY(-10px); }
+  to   { opacity:1; transform: none; }
+}
+
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.modal-head h2 { font-size: 14px; font-weight: 600; }
+
+.close-btn {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--panel2); border: none;
+  color: var(--txt2); font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .12s;
+}
+.close-btn:hover { background: var(--red-bg); color: var(--red); }
+
+/* breadcrumb */
+.breadcrumb-bar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 2px;
+  padding: 8px 16px;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--line);
+  min-height: 40px; flex-shrink: 0;
+}
+
+.bc {
+  background: none; border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--txt3); cursor: pointer;
+  padding: 4px 6px; border-radius: 4px;
+  transition: background .1s, color .1s;
+  white-space: nowrap;
+}
+.bc:hover { background: var(--panel3); color: var(--txt); }
+.bc.current { color: var(--txt2); pointer-events: none; font-weight: 500; }
+
+.bc-arrow { color: var(--txt3); font-size: 10px; opacity: .4; }
+
+/* dir list */
+.dir-scroll { flex: 1; overflow-y: auto; }
+
+.dir-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 20px; cursor: pointer;
+  transition: background .1s;
+  border-bottom: 1px solid var(--line);
+}
+.dir-row:last-child { border-bottom: none; }
+.dir-row:hover { background: var(--panel2); }
+
+.dir-row.up { opacity: .7; }
+.dir-row.up:hover { opacity: 1; }
+
+.dir-ico { font-size: 17px; flex-shrink: 0; }
+.dir-label { font-size: 13px; color: var(--txt); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dir-row.up .dir-label { color: var(--txt2); font-style: italic; }
+.dir-row.empty-msg { cursor: default; justify-content: center; padding: 36px 20px; }
+.dir-row.empty-msg:hover { background: none; }
+.dir-row.empty-msg .dir-label { color: var(--txt3); font-style: italic; }
+
+/* loading */
+.loader {
+  display: flex; align-items: center; gap: 10px;
+  padding: 40px; justify-content: center;
+  color: var(--txt3); font-size: 13px;
+}
+.spin {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--line2);
+  border-top-color: var(--accent);
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.modal-foot {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--panel2); flex-shrink: 0;
+}
+
+.modal-path-display {
+  flex: 1; min-width: 0;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--txt3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ─── BITRATE REFERENCE (sidebar) ───────────────────────── */
+.ref-group {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--panel2);
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+.ref-label {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .6px;
+  color: var(--txt3); margin-bottom: 5px;
+}
+.ref-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 3px;
+}
+.ref-q {
+  font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 3px;
+}
+.ref-q.good { background: var(--green-bg); color: var(--green); }
+.ref-q.ok   { background: var(--amber-bg); color: var(--amber); }
+.ref-q.low  { background: var(--red-bg);   color: var(--red); }
+.ref-v {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--txt3);
+}
+
+/* ─── BITRATE TAG (table) ────────────────────────────────── */
+.bitrate-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+}
+.bitrate-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.bd-good { background: var(--green); box-shadow: 0 0 4px var(--green); }
+.bd-ok   { background: var(--amber); box-shadow: 0 0 4px var(--amber); }
+.bd-low  { background: var(--red);   box-shadow: 0 0 4px var(--red); }
+
+/* ─── AUDIO EDITOR MODAL ────────────────────────────────── */
+.track-list { display: flex; flex-direction: column; gap: 8px; padding: 20px; }
+
+.track-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  transition: border-color .15s, background .15s;
+  cursor: pointer;
+  user-select: none;
+}
+.track-item:hover { border-color: var(--line2); background: var(--panel3); }
+
+.track-item.selected {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+.track-item.to-delete {
+  border-color: var(--red);
+  background: var(--red-bg);
+  opacity: .7;
+}
+
+.track-checkbox {
+  width: 18px; height: 18px; border-radius: 4px;
+  border: 2px solid var(--line2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 11px;
+  transition: all .15s;
+}
+.track-item.selected  .track-checkbox { border-color: var(--accent); background: var(--accent); color: #fff; }
+.track-item.to-delete .track-checkbox { border-color: var(--red);    background: transparent;   color: var(--red); }
+
+.track-info { flex: 1; min-width: 0; }
+.track-name {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.track-meta {
+  font-size: 11px; color: var(--txt3); margin-top: 3px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.track-badges { display: flex; gap: 5px; align-items: center; }
+.badge-default { background: var(--accent-bg); color: var(--accent); font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 600; }
+.badge-forced  { background: var(--amber-bg);  color: var(--amber);  font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 600; }
+.badge-del     { background: var(--red-bg);    color: var(--red);    font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 600; }
+
+.editor-summary {
+  margin: 0 20px 16px;
+  padding: 12px 16px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px; color: var(--txt2);
+  display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+}
+.editor-summary .sum-item { display: flex; align-items: center; gap: 6px; }
+.sum-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.edit-warn {
+  margin: 0 20px 4px;
+  padding: 10px 14px;
+  background: var(--amber-bg);
+  border: 1px solid rgba(251,191,36,.25);
+  border-radius: 8px;
+  font-size: 12px; color: var(--amber);
+  display: none;
+}
+
+.edit-result {
+  margin: 0 20px 4px;
+  padding: 12px 16px;
+  background: var(--green-bg);
+  border: 1px solid rgba(52,211,153,.25);
+  border-radius: 8px;
+  font-size: 13px; color: var(--green);
+  display: none;
+}
+
+/* ─── EDITOR TABS ───────────────────────────────────────── */
+.editor-tabs {
+  display: flex; border-bottom: 1px solid var(--line);
+  background: var(--panel2);
+}
+.etab {
+  flex: 1; padding: 11px 16px;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--txt3); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all .15s;
+}
+.etab:hover { color: var(--txt2); background: rgba(255,255,255,.03); }
+.etab.active { color: var(--accent); border-bottom-color: var(--accent); background: transparent; }
+
+/* ─── TRANSCODE FORM ─────────────────────────────────────── */
+.tc-field { display: flex; flex-direction: column; }
+.tc-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .7px; color: var(--txt3); }
+
+.tc-radio-group { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.tc-radio {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 8px;
+  border: 1px solid var(--line2); cursor: pointer;
+  transition: all .15s; background: var(--panel2);
+}
+.tc-radio input { display: none; }
+.tc-radio:has(input:checked), .tc-radio.active {
+  border-color: var(--accent); background: var(--accent-bg);
+}
+.tc-radio-body { display: flex; flex-direction: column; }
+.tc-radio-title { font-size: 13px; font-weight: 500; color: var(--txt); }
+.tc-radio-sub   { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+.tc-radio::before {
+  content: ''; width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--line2); flex-shrink: 0; transition: all .15s;
+}
+.tc-radio:has(input:checked)::before {
+  border-color: var(--accent); background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.tc-estimate {
+  background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 8px; align-self: start;
+}
+.tc-est-row { display: flex; justify-content: space-between; align-items: center; }
+.tc-est-label { font-size: 12px; color: var(--txt3); }
+.tc-est-val   { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--txt); font-weight: 500; }
+
+/* ─── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--panel3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--line2); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main-wrap { margin-left: 0; }
+  .stats-grid { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">🎬</div>
+    <div class="logo-text">
+      MediaScan
+      <span>Codec Analyzer</span>
+    </div>
+  </div>
+
+  <div class="sidebar-section">Navigation</div>
+  <div class="nav-item active" id="nav-scan">
+    <span class="ni">🔍</span> Scanner
+  </div>
+  <div class="nav-item" onclick="scrollToResults()">
+    <span class="ni">📋</span> Résultats
+  </div>
+
+  <div class="sidebar-section" style="margin-top:12px">Codecs</div>
+  <div style="padding:2px 16px 10px">
+    <div style="font-size:12px; color:var(--txt2); line-height:2.1">
+      <span style="color:var(--green)">●</span> HEVC / H.265<br>
+      <span style="color:var(--green)">●</span> AV1<br>
+      <span style="color:var(--accent)">●</span> VP9<br>
+      <span style="color:var(--red)">●</span> H.264 et autres
+    </div>
+  </div>
+
+  <div class="sidebar-section">Bitrate de référence</div>
+  <div style="padding:4px 16px 12px; overflow-y:auto">
+
+    <div class="ref-group">
+      <div class="ref-label">4K (HEVC / AV1)</div>
+      <div class="ref-row"><span class="ref-q good">Excellent</span><span class="ref-v">≥ 20 Mb/s</span></div>
+      <div class="ref-row"><span class="ref-q ok">Correct</span><span class="ref-v">10–20 Mb/s</span></div>
+      <div class="ref-row"><span class="ref-q low">Faible</span><span class="ref-v">&lt; 10 Mb/s</span></div>
+    </div>
+
+    <div class="ref-group">
+      <div class="ref-label">4K (H.264)</div>
+      <div class="ref-row"><span class="ref-q good">Excellent</span><span class="ref-v">≥ 40 Mb/s</span></div>
+      <div class="ref-row"><span class="ref-q ok">Correct</span><span class="ref-v">20–40 Mb/s</span></div>
+      <div class="ref-row"><span class="ref-q low">Faible</span><span class="ref-v">&lt; 20 Mb/s</span></div>
+    </div>
+
+    <div class="ref-group">
+      <div class="ref-label">1080p (HEVC / AV1)</div>
+      <div class="ref-row"><span class="ref-q good">Excellent</span><span class="ref-v">≥ 6 Mb/s</span></div>
+      <div class="ref-row"><span class="ref-q ok">Correct</span><span class="ref-v">3–6 Mb/s</span></div>
+      <div class="ref-row"><span class="ref-q low">Faible</span><span class="ref-v">&lt; 3 Mb/s</span></div>
+    </div>
+
+    <div class="ref-group">
+      <div class="ref-label">1080p (H.264)</div>
+      <div class="ref-row"><span class="ref-q good">Excellent</span><span class="ref-v">≥ 12 Mb/s</span></div>
+      <div class="ref-row"><span class="ref-q ok">Correct</span><span class="ref-v">6–12 Mb/s</span></div>
+      <div class="ref-row"><span class="ref-q low">Faible</span><span class="ref-v">&lt; 6 Mb/s</span></div>
+    </div>
+
+    <div class="ref-group">
+      <div class="ref-label">720p (tous codecs)</div>
+      <div class="ref-row"><span class="ref-q good">Excellent</span><span class="ref-v">≥ 4 Mb/s</span></div>
+      <div class="ref-row"><span class="ref-q ok">Correct</span><span class="ref-v">2–4 Mb/s</span></div>
+      <div class="ref-row"><span class="ref-q low">Faible</span><span class="ref-v">&lt; 2 Mb/s</span></div>
+    </div>
+
+    <div style="margin-top:10px; font-size:10px; color:var(--txt3); line-height:1.5">
+      Couleurs dans le tableau :<br>
+      <span style="color:var(--green)">■</span> Excellent &nbsp;
+      <span style="color:var(--amber)">■</span> Correct &nbsp;
+      <span style="color:var(--red)">■</span> Faible
+    </div>
+  </div>
+
+  <div class="sidebar-footer" id="clock"></div>
+</aside>
+
+<!-- ── MAIN ── -->
+<div class="main-wrap">
+  <header class="topbar">
+    <span class="topbar-title">Bibliothèque de films</span>
+    <span class="topbar-sep"></span>
+    <span id="topbar-status" style="font-size:12px;color:var(--txt3)">Aucune analyse</span>
+  </header>
+
+  <div class="content">
+
+    <!-- Scanner card -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Répertoire à analyser</div>
+      </div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field">
+            <span class="field-icon">📁</span>
+            <input type="text" id="pathInput" placeholder="/chemin/vers/vos/films">
+          </div>
+          <button class="btn btn-default" onclick="openBrowser()">
+            <span>🗂</span> Parcourir
+          </button>
+          <button class="btn btn-primary" id="scanBtn" onclick="startScan()">
+            <span>▶</span> Analyser
+          </button>
+          <button class="btn btn-subtle" id="clearBtn" onclick="clearAll()" style="display:none">
+            ✕ Effacer
+          </button>
+        </div>
+        <div class="progress-area" id="progressArea">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+            <span class="progress-msg" id="progressMsg">Découverte des fichiers…</span>
+            <span id="scanCount" style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent)"></span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="scanProgressBar"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px">
+            <div id="scanCurrentFile" style="font-size:11px;color:var(--txt3);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0"></div>
+            <button id="scanCancelBtn" onclick="cancelScan()" style="display:none;margin-left:12px;font-size:11px;padding:2px 10px;height:24px" class="btn btn-default">✕ Arrêter</button>
+          </div>
+        </div>
+        <div id="errContainer"></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid" style="display:none">
+      <div class="stat-card blue">
+        <div class="stat-label">Total</div>
+        <div class="stat-val" id="sTotal">—</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Optimisés</div>
+        <div class="stat-val" id="sGood">—</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">À transcoder</div>
+        <div class="stat-val" id="sBad">—</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-label">Taille totale</div>
+        <div class="stat-val" id="sSize">—</div>
+      </div>
+    </div>
+
+    <!-- Results card -->
+    <div class="card" id="resultsCard" style="display:none">
+      <div class="card-head">
+        <div class="card-title">Résultats</div>
+        <span class="card-sub" id="countLabel"></span>
+      </div>
+      <div class="card-body" style="padding-bottom:0">
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="filter-input" id="fName"
+              placeholder="Rechercher…" oninput="applyFilters()">
+          </div>
+          <select id="fCodec" onchange="applyFilters()">
+            <option value="">Tous les codecs</option>
+            <option value="HEVC">HEVC</option>
+            <option value="AV1">AV1</option>
+            <option value="H264">H.264</option>
+            <option value="VP9">VP9</option>
+          </select>
+          <select id="fRes" onchange="applyFilters()">
+            <option value="">Toutes résolutions</option>
+            <option value="4K">4K</option>
+            <option value="1080p">1080p</option>
+            <option value="720p">720p</option>
+            <option value="SD">SD</option>
+          </select>
+          <select id="fStatus" onchange="applyFilters()">
+            <option value="">Tous les statuts</option>
+            <option value="ok">Optimisé</option>
+            <option value="bad">À transcoder</option>
+          </select>
+          <button class="btn btn-default btn-sm" onclick="resetFilters()">Réinit.</button>
+        </div>
+
+        <div class="table-outer">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="sortBy('name')">Fichier <span class="si"></span></th>
+                <th onclick="sortBy('codec')">Codec <span class="si"></span></th>
+                <th onclick="sortBy('height')">Résolution <span class="si"></span></th>
+                <th onclick="sortBy('bitrate_raw')">Bitrate <span class="si"></span></th>
+                <th onclick="sortBy('size_raw')">Taille <span class="si"></span></th>
+                <th onclick="sortBy('duration_raw')">Durée <span class="si"></span></th>
+                <th onclick="sortBy('audio_codec')">Audio <span class="si"></span></th>
+                <th onclick="sortBy('optimized')">Statut <span class="si"></span></th>
+                <th style="width:90px"></th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🎬</div>
+      <div class="empty-title">Aucune bibliothèque analysée</div>
+      <div class="empty-sub">
+        Entrez le chemin d'un dossier ou utilisez <strong>Parcourir</strong>, puis cliquez sur <strong>Analyser</strong>.
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main-wrap -->
+
+<!-- ── FOLDER BROWSER MODAL ── -->
+<div class="overlay" id="overlay" onclick="bgClick(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+
+    <div class="modal-head">
+      <h2>Sélectionner un dossier</h2>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+
+    <div class="breadcrumb-bar" id="bcBar"></div>
+
+    <div class="dir-scroll" id="dirScroll">
+      <div class="loader"><div class="spin"></div> Chargement…</div>
+    </div>
+
+    <div class="modal-foot">
+      <div class="modal-path-display" id="modalPathDisplay">—</div>
+      <button class="btn btn-primary" onclick="confirmPath()" style="height:38px;font-size:13px">
+        ✓ Choisir ce dossier
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── EDITOR MODAL (audio + transcode) ── -->
+<div class="overlay" id="editorOverlay" onclick="editorBgClick(event)">
+  <div class="modal" style="width:700px;max-height:88vh" onclick="event.stopPropagation()">
+
+    <div class="modal-head">
+      <div>
+        <h2 id="editorTitle">Éditer le fichier</h2>
+        <div class="f-path" id="editorFilePath" style="margin-top:3px"></div>
+      </div>
+      <button class="close-btn" id="editorCloseBtn" onclick="closeEditor()">✕</button>
+    </div>
+
+    <!-- Onglets -->
+    <div class="editor-tabs">
+      <button class="etab active" id="tab-audio" onclick="switchTab('audio')">✂ Pistes audio</button>
+      <button class="etab" id="tab-transcode" onclick="switchTab('transcode')">⚙ Transcoder</button>
+    </div>
+
+    <!-- ── ONGLET AUDIO ── -->
+    <div id="panel-audio">
+      <div class="edit-warn" id="editWarn">⚠ Vous devez conserver au moins une piste audio.</div>
+      <div class="edit-result" id="editResult"></div>
+      <div class="editor-summary" id="editorSummary"></div>
+      <div class="dir-scroll" id="trackList" style="max-height:260px"></div>
+
+      <!-- Progression audio -->
+      <div id="audioProgress" style="display:none;padding:16px 20px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:12px;color:var(--txt2)" id="audioProgressLabel">Traitement…</span>
+          <span class="mono" style="font-size:12px;color:var(--accent)" id="audioProgressPct">0%</span>
+        </div>
+        <div class="progress-track" style="height:6px;border-radius:3px">
+          <div class="progress-fill" id="audioProgressBar" style="width:0%;transition:width .3s;animation:none;background:var(--accent)"></div>
+        </div>
+        <div id="audioLogBox" style="margin-top:10px;background:var(--panel2);border:1px solid var(--line);
+             border-radius:6px;padding:10px;max-height:100px;overflow-y:auto;
+             font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3);white-space:pre-wrap"></div>
+      </div>
+
+      <div class="modal-foot">
+        <div style="font-size:12px;color:var(--txt3);flex:1">
+          Décochez les pistes à <strong style="color:var(--red)">supprimer</strong>. Sans réencodage.
+        </div>
+        <button class="btn btn-default" id="audioCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
+        <button class="btn btn-primary" id="applyAudioBtn" onclick="applyAudioEdit()" style="height:38px">✂ Appliquer</button>
+      </div>
+    </div>
+
+    <!-- ── ONGLET TRANSCODE ── -->
+    <div id="panel-transcode" style="display:none">
+      <div style="padding:16px 20px 12px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+        <!-- Codec -->
+        <div class="tc-field">
+          <label class="tc-label">Codec cible</label>
+          <div class="tc-radio-group" style="margin-top:6px">
+            <label class="tc-radio">
+              <input type="radio" name="tcCodec" value="hevc" checked onchange="updateTcEstimate()">
+              <div class="tc-radio-body">
+                <span class="tc-radio-title">HEVC / H.265</span>
+                <span class="tc-radio-sub">Compatibilité universelle · −40-60%</span>
+              </div>
+            </label>
+            <label class="tc-radio">
+              <input type="radio" name="tcCodec" value="av1" onchange="updateTcEstimate()">
+              <div class="tc-radio-body">
+                <span class="tc-radio-title">AV1</span>
+                <span class="tc-radio-sub">Meilleure compression · −55-75%</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Encodeur CPU/GPU -->
+        <div class="tc-field">
+          <label class="tc-label">Encodeur <span id="nvencBadge" style="display:none;margin-left:6px;background:var(--green-bg);color:var(--green);font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600">RTX détectée</span></label>
+          <div class="tc-radio-group" style="margin-top:6px">
+            <label class="tc-radio">
+              <input type="radio" name="tcEncoder" value="cpu" checked onchange="updateTcEstimate()">
+              <div class="tc-radio-body">
+                <span class="tc-radio-title">CPU (libx265 / SVT-AV1)</span>
+                <span class="tc-radio-sub">Meilleure qualité · plus lent</span>
+              </div>
+            </label>
+            <label class="tc-radio" id="gpuRadioLabel">
+              <input type="radio" name="tcEncoder" value="gpu" onchange="updateTcEstimate()">
+              <div class="tc-radio-body">
+                <span class="tc-radio-title">GPU — NVENC <span id="gpuName" style="color:var(--txt3);font-size:11px"></span></span>
+                <span class="tc-radio-sub">10-50× plus rapide · mode QP constant · même réduction</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- CRF + Preset -->
+        <div class="tc-field">
+          <label class="tc-label">
+            Qualité (CRF / QP) — <span id="crfVal" style="color:var(--accent);font-size:13px">22</span>
+            <span id="crfPreset" style="float:right;color:var(--txt3);font-size:10px;font-weight:400"></span>
+          </label>
+          <input type="range" id="tcCrf" min="16" max="36" value="22"
+                 oninput="onCrfChange()"
+                 style="width:100%;accent-color:var(--accent);margin-top:8px;cursor:pointer">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-top:3px">
+            <span>16 — Qualité max</span><span>28 — Défaut</span><span>36 — Fichier petit</span>
+          </div>
+
+          <div style="margin-top:12px">
+            <label class="tc-label">Vitesse d'encodage</label>
+            <select id="tcPreset" onchange="updateTcEstimate()" style="width:100%;height:36px;margin-top:4px">
+              <option value="slow">Lent — qualité optimale</option>
+              <option value="medium" selected>Équilibré</option>
+              <option value="fast">Rapide</option>
+              <option value="ultrafast">Très rapide</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Estimation + Audio -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="tc-estimate" id="tcEstimate">
+            <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--txt3);margin-bottom:8px">Estimation</div>
+            <div class="tc-est-row" style="margin-bottom:6px">
+              <span class="tc-est-label">Taille finale</span>
+              <span class="tc-est-val" id="estSize">—</span>
+            </div>
+            <div class="tc-est-row" style="margin-bottom:8px">
+              <span class="tc-est-label">Économie</span>
+              <span class="tc-est-val" id="estSaving" style="color:var(--green)">—</span>
+            </div>
+            <div style="border-top:1px solid var(--line);padding-top:8px">
+              <div style="font-size:10px;color:var(--txt3);margin-bottom:5px" id="estBitrateCtx"></div>
+              <div class="tc-est-row">
+                <span style="font-size:10px;color:var(--txt3)">Fourchette HEVC</span>
+                <span style="font-size:10px;color:var(--txt2)" id="estRangeHevc">—</span>
+              </div>
+              <div class="tc-est-row">
+                <span style="font-size:10px;color:var(--txt3)">Fourchette AV1</span>
+                <span style="font-size:10px;color:var(--txt2)" id="estRangeAv1">—</span>
+              </div>
+            </div>
+            <div style="font-size:10px;color:var(--txt3);margin-top:8px;border-top:1px solid var(--line);padding-top:6px" id="tcEstNote">
+              ⚠ Fourchette basée sur le bitrate source réel.<br>L'original sera remplacé.
+            </div>
+          </div>
+
+          <div class="tc-field">
+            <label class="tc-label">Audio</label>
+            <select id="tcAudio" style="width:100%;height:36px;margin-top:4px">
+              <option value="copy">Copier sans réencodage</option>
+              <option value="aac">Réencoder en AAC 192k</option>
+            </select>
+          </div>
+
+          <div class="tc-field">
+            <label class="tc-label">Fichier de sortie</label>
+            <div style="margin-top:6px;display:flex;flex-direction:column;gap:5px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--txt1)">
+                <input type="radio" name="tcOutput" value="overwrite" checked onchange="updateTcFootNote()">
+                Écraser l'original
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--txt1)">
+                <input type="radio" name="tcOutput" value="new" onchange="updateTcFootNote()">
+                Créer un nouveau fichier
+              </label>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Progression -->
+      <div id="tcProgress" style="display:none;padding:0 20px 16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:12px;color:var(--txt2)" id="tcProgressLabel">Encodage…</span>
+          <span class="mono" style="font-size:12px;color:var(--accent)" id="tcProgressPct">0%</span>
+        </div>
+        <div class="progress-track" style="height:6px;border-radius:3px">
+          <div id="tcProgressBar" style="height:100%;width:0%;transition:width .3s;border-radius:3px;background:linear-gradient(90deg,var(--accent),#a78bfa)"></div>
+        </div>
+        <div id="tcLogBox" style="margin-top:10px;background:var(--panel2);border:1px solid var(--line);
+             border-radius:6px;padding:10px;max-height:100px;overflow-y:auto;
+             font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3);white-space:pre-wrap"></div>
+      </div>
+
+      <div class="modal-foot">
+        <div style="font-size:12px;color:var(--txt3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="tcFootNote">
+          L'original sera remplacé par le fichier transcodé.
+        </div>
+        <button class="btn btn-default" id="tcCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
+        <button class="btn btn-primary" id="applyTcBtn" onclick="applyTranscode()" style="height:38px">⚙ Transcoder</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────
+let files    = [];
+let sortKey  = 'name';
+let activeScanSSE   = null;
+let activeScanJobId = null;
+let scanRenderTimer = null;
+let sortDir  = 1;
+let browseAt = '';   // chemin actuellement affiché dans le browser
+
+// ── CLOCK ─────────────────────────────────────────────────
+function tick() {
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    n.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})
+    + '\n' + n.toLocaleTimeString('fr-FR');
+}
+tick(); setInterval(tick, 1000);
+
+// ── FOLDER BROWSER ────────────────────────────────────────
+function openBrowser() {
+  document.getElementById('overlay').classList.add('open');
+  const start = document.getElementById('pathInput').value.trim();
+  loadDir(start || null);
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function bgClick(e) {
+  if (e.target === document.getElementById('overlay')) closeModal();
+}
+
+async function loadDir(path) {
+  const scroll  = document.getElementById('dirScroll');
+  const bcBar   = document.getElementById('bcBar');
+  const display = document.getElementById('modalPathDisplay');
+
+  scroll.innerHTML  = '<div class="loader"><div class="spin"></div> Chargement…</div>';
+  bcBar.innerHTML   = '';
+  display.textContent = '…';
+
+  let data;
+  try {
+    const url = '/api/browse' + (path ? '?path=' + encodeURIComponent(path) : '');
+    const r   = await fetch(url);
+    data      = await r.json();
+  } catch(e) {
+    scroll.innerHTML = '';
+    scroll.appendChild(emptyRow('Erreur réseau : ' + e.message));
+    return;
+  }
+
+  if (data.error) {
+    scroll.innerHTML = '';
+    scroll.appendChild(emptyRow('⚠ ' + data.error));
+    return;
+  }
+
+  browseAt = data.path;
+  display.textContent = data.path;
+
+  buildBreadcrumb(data.path, bcBar);
+  buildDirList(scroll, data);
+}
+
+function buildDirList(container, data) {
+  container.innerHTML = '';
+
+  // Dossier parent
+  if (data.parent !== null) {
+    const el = document.createElement('div');
+    el.className = 'dir-row up';
+    el.innerHTML = '<span class="dir-ico">↩</span><span class="dir-label">Dossier parent</span>';
+    el.addEventListener('click', () => loadDir(data.parent));
+    container.appendChild(el);
+  }
+
+  if (data.dirs.length === 0) {
+    container.appendChild(emptyRow('Aucun sous-dossier'));
+    return;
+  }
+
+  for (const d of data.dirs) {
+    const name = d.replace(/\\/g, '/').split('/').filter(Boolean).pop() || d;
+    const el = document.createElement('div');
+    el.className = 'dir-row';
+    el.innerHTML = '<span class="dir-ico">📁</span><span class="dir-label"></span>';
+    el.querySelector('.dir-label').textContent = name;
+    el.addEventListener('click', () => loadDir(d));
+    container.appendChild(el);
+  }
+}
+
+function emptyRow(msg) {
+  const el = document.createElement('div');
+  el.className = 'dir-row empty-msg';
+  el.innerHTML = '<span class="dir-label"></span>';
+  el.querySelector('.dir-label').textContent = msg;
+  return el;
+}
+
+function buildBreadcrumb(fullPath, el) {
+  el.innerHTML = '';
+  const parts = fullPath.replace(/\\/g, '/').split('/').filter(Boolean);
+  let built = '';
+
+  // Root /
+  const rootBtn = document.createElement('button');
+  rootBtn.className = 'bc';
+  rootBtn.textContent = '/';
+  rootBtn.addEventListener('click', () => loadDir('/'));
+  el.appendChild(rootBtn);
+
+  parts.forEach((p, i) => {
+    built += '/' + p;
+    const cap  = built;
+    const last = i === parts.length - 1;
+
+    const sep = document.createElement('span');
+    sep.className = 'bc-arrow';
+    sep.textContent = '›';
+    el.appendChild(sep);
+
+    const btn = document.createElement('button');
+    btn.className = 'bc' + (last ? ' current' : '');
+    btn.textContent = p;
+    if (!last) btn.addEventListener('click', () => loadDir(cap));
+    el.appendChild(btn);
+  });
+}
+
+function confirmPath() {
+  if (!browseAt) return;
+  document.getElementById('pathInput').value = browseAt;
+  closeModal();
+  toast('Dossier sélectionné');
+}
+
+// ── SCAN ──────────────────────────────────────────────────
+async function startScan() {
+  const path = document.getElementById('pathInput').value.trim();
+  if (!path) { toast('Veuillez entrer un chemin'); return; }
+
+  files = [];
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span> Analyse…';
+
+  document.getElementById('progressArea').style.display = 'block';
+  document.getElementById('progressMsg').textContent    = 'Découverte des fichiers…';
+  document.getElementById('scanCount').textContent      = '';
+  document.getElementById('scanCurrentFile').textContent = '';
+  document.getElementById('scanCancelBtn').style.display = 'none';
+  setScanProgressBar(0, true);  // indéterminé pendant la découverte
+  document.getElementById('errContainer').innerHTML     = '';
+  document.getElementById('statsGrid').style.display    = 'none';
+  document.getElementById('resultsCard').style.display  = 'none';
+  document.getElementById('emptyState').style.display   = 'none';
+
+  let d;
+  try {
+    const r = await fetch('/api/scan', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
+    d = await r.json();
+  } catch(e) {
+    toast('Erreur réseau : ' + e.message);
+    finishScan();
+    return;
+  }
+
+  if (d.error) { toast('Erreur : ' + d.error); showOnly('emptyState'); finishScan(); return; }
+
+  // Dossier vide : réponse directe sans SSE
+  if (d.files) {
+    files = d.files;
+    if (files.length) { renderStats(d.stats); applyFilters(); document.getElementById('clearBtn').style.display = ''; }
+    else showOnly('emptyState');
+    toast('Aucun fichier vidéo trouvé');
+    finishScan();
+    return;
+  }
+
+  // Lancement SSE
+  const {job_id, total} = d;
+  activeScanJobId = job_id;
+  document.getElementById('progressMsg').textContent = `0 / ${total} fichiers analysés`;
+  document.getElementById('scanCount').textContent   = '0%';
+  document.getElementById('scanCancelBtn').style.display = '';
+  setScanProgressBar(0, false);
+
+  activeScanSSE = new EventSource(`/api/scan/${job_id}/stream`);
+  activeScanSSE.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'file') {
+      files.push(msg.file);
+      const pct = Math.round(msg.n / total * 100);
+      document.getElementById('progressMsg').textContent    = `${msg.n} / ${total} fichiers analysés`;
+      document.getElementById('scanCount').textContent      = pct + '%';
+      document.getElementById('scanCurrentFile').textContent = msg.current;
+      setScanProgressBar(pct, false);
+      // Mise à jour de la liste toutes les 500 ms max
+      if (!scanRenderTimer) {
+        scanRenderTimer = setTimeout(() => {
+          applyFilters();
+          scanRenderTimer = null;
+        }, 500);
+      }
+    } else if (msg.type === 'done') {
+      activeScanSSE.close(); activeScanSSE = null; activeScanJobId = null;
+      clearTimeout(scanRenderTimer); scanRenderTimer = null;
+      renderStats(msg.stats);
+      applyFilters();
+      document.getElementById('topbar-status').textContent =
+        `${msg.stats.total} fichier(s) — ${msg.stats.optimized} optimisé(s) · ${msg.stats.total_size_fmt}`;
+      if (msg.errors && msg.errors.length) {
+        document.getElementById('errContainer').innerHTML =
+          `<div class="err-box" style="margin-top:12px">
+            <h4>${msg.errors.length} fichier(s) illisibles</h4>
+            <ul>${msg.errors.map(e=>`<li>${esc(e)}</li>`).join('')}</ul>
+          </div>`;
+      }
+      document.getElementById('clearBtn').style.display = '';
+      toast(`${files.length} fichier(s) analysé(s)`);
+      finishScan();
+    } else if (msg.type === 'error') {
+      activeScanSSE.close(); activeScanSSE = null;
+      toast('Erreur : ' + msg.error);
+      finishScan();
+    }
+  };
+  activeScanSSE.onerror = () => {
+    activeScanSSE.close(); activeScanSSE = null;
+    toast('Connexion perdue');
+    finishScan();
+  };
+}
+
+function cancelScan() {
+  if (activeScanJobId) {
+    fetch(`/api/scan/${activeScanJobId}/cancel`, {method:'POST'}).catch(()=>{});
+    activeScanJobId = null;
+  }
+  if (activeScanSSE) { activeScanSSE.close(); activeScanSSE = null; }
+  clearTimeout(scanRenderTimer); scanRenderTimer = null;
+  if (files.length) { applyFilters(); document.getElementById('clearBtn').style.display = ''; }
+  else showOnly('emptyState');
+  toast('Analyse interrompue');
+  finishScan();
+}
+
+function finishScan() {
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = false;
+  btn.innerHTML = '<span>▶</span> Analyser';
+  document.getElementById('progressArea').style.display  = 'none';
+  document.getElementById('scanCancelBtn').style.display = 'none';
+}
+
+function setScanProgressBar(pct, indeterminate) {
+  const bar = document.getElementById('scanProgressBar');
+  if (indeterminate) {
+    bar.style.width     = '30%';
+    bar.style.transform = '';
+    bar.style.animation = '';
+  } else {
+    bar.style.animation = 'none';
+    bar.style.transform = 'none';
+    bar.style.width     = pct + '%';
+  }
+}
+
+function clearAll() {
+  files = [];
+  document.getElementById('statsGrid').style.display   = 'none';
+  document.getElementById('resultsCard').style.display = 'none';
+  document.getElementById('clearBtn').style.display    = 'none';
+  document.getElementById('errContainer').innerHTML    = '';
+  document.getElementById('topbar-status').textContent = 'Aucune analyse';
+  showOnly('emptyState');
+  resetFilters();
+}
+
+// ── STATS ─────────────────────────────────────────────────
+function renderStats(s) {
+  document.getElementById('statsGrid').style.display = 'grid';
+  document.getElementById('sTotal').textContent = s.total;
+  document.getElementById('sGood').textContent  = s.optimized;
+  document.getElementById('sBad').textContent   = s.to_transcode;
+  document.getElementById('sSize').textContent  = s.total_size_fmt;
+}
+
+// ── TABLE ─────────────────────────────────────────────────
+function applyFilters() {
+  const name   = document.getElementById('fName').value.toLowerCase();
+  const codec  = document.getElementById('fCodec').value.toUpperCase();
+  const res    = document.getElementById('fRes').value;
+  const status = document.getElementById('fStatus').value;
+
+  let rows = files.filter(f => {
+    if (name   && !f.name.toLowerCase().includes(name)) return false;
+    if (codec  && !f.codec.toUpperCase().includes(codec)) return false;
+    if (res    && f.res_label !== res)                  return false;
+    if (status === 'ok'  && !f.optimized) return false;
+    if (status === 'bad' &&  f.optimized) return false;
+    return true;
+  });
+
+  rows.sort((a, b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    return sortDir * (va < vb ? -1 : va > vb ? 1 : 0);
+  });
+
+  document.getElementById('countLabel').textContent = rows.length + ' fichier(s)';
+  document.getElementById('resultsCard').style.display = 'block';
+  document.getElementById('emptyState').style.display  = 'none';
+
+  const tbody = document.getElementById('tbody');
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--txt3)">Aucun résultat</td></tr>`;
+    return;
+  }
+
+  const codecTag = c => {
+    if (c.includes('HEVC') || c.includes('265') || c.includes('AV1'))
+      return `<span class="tag tag-green">${esc(c)}</span>`;
+    if (c.includes('VP9'))
+      return `<span class="tag tag-blue">${esc(c)}</span>`;
+    return `<span class="tag tag-amber">${esc(c)}</span>`;
+  };
+
+  // Bitrate coloré selon résolution et codec
+  const bitrateTag = (f) => {
+    const bps = f.bitrate_raw; // en bits/s
+    const mbps = bps / 1_000_000;
+    const is4k   = f.height >= 2160;
+    const is1080 = f.height >= 1080 && f.height < 2160;
+    const is720  = f.height >= 720  && f.height < 1080;
+    const hevc   = f.codec.includes('HEVC') || f.codec.includes('265') || f.codec.includes('AV1') || f.codec.includes('VP9');
+
+    let cls = 'bd-ok';
+    let tip = 'Correct';
+    if (is4k) {
+      const [lo, hi] = hevc ? [10, 20] : [20, 40];
+      cls = mbps >= hi ? 'bd-good' : mbps < lo ? 'bd-low' : 'bd-ok';
+      tip = mbps >= hi ? 'Excellent' : mbps < lo ? 'Faible' : 'Correct';
+    } else if (is1080) {
+      const [lo, hi] = hevc ? [3, 6] : [6, 12];
+      cls = mbps >= hi ? 'bd-good' : mbps < lo ? 'bd-low' : 'bd-ok';
+      tip = mbps >= hi ? 'Excellent' : mbps < lo ? 'Faible' : 'Correct';
+    } else if (is720) {
+      cls = mbps >= 4 ? 'bd-good' : mbps < 2 ? 'bd-low' : 'bd-ok';
+      tip = mbps >= 4 ? 'Excellent' : mbps < 2 ? 'Faible' : 'Correct';
+    } else {
+      cls = 'bd-ok'; tip = '—';
+    }
+    return `<span class="bitrate-tag" title="${tip}">
+      <span class="bitrate-dot ${cls}"></span>${esc(f.bitrate)}
+    </span>`;
+  };
+
+  // Drapeaux langue
+  const LANG_FLAGS = {
+    fre:'🇫🇷', fra:'🇫🇷', french:'🇫🇷',
+    eng:'🇬🇧', en:'🇬🇧', english:'🇬🇧',
+    deu:'🇩🇪', ger:'🇩🇪', de:'🇩🇪',
+    spa:'🇪🇸', esp:'🇪🇸', es:'🇪🇸',
+    ita:'🇮🇹', it:'🇮🇹',
+    jpn:'🇯🇵', ja:'🇯🇵',
+    kor:'🇰🇷', ko:'🇰🇷',
+    zho:'🇨🇳', chi:'🇨🇳', zh:'🇨🇳',
+    por:'🇵🇹', pt:'🇵🇹',
+    rus:'🇷🇺', ru:'🇷🇺',
+    ara:'🇸🇦', ar:'🇸🇦',
+    nld:'🇳🇱', dut:'🇳🇱', nl:'🇳🇱',
+    pol:'🇵🇱', pl:'🇵🇱',
+    swe:'🇸🇪', sv:'🇸🇪',
+    nor:'🇳🇴', no:'🇳🇴',
+    dan:'🇩🇰', da:'🇩🇰',
+    fin:'🇫🇮', fi:'🇫🇮',
+    tur:'🇹🇷', tr:'🇹🇷',
+    hin:'🇮🇳', hi:'🇮🇳',
+    vie:'🇻🇳', vi:'🇻🇳',
+    tha:'🇹🇭', th:'🇹🇭',
+    ces:'🇨🇿', cze:'🇨🇿', cs:'🇨🇿',
+    hun:'🇭🇺', hu:'🇭🇺',
+    ron:'🇷🇴', rum:'🇷🇴', ro:'🇷🇴',
+    heb:'🇮🇱', he:'🇮🇱',
+    ukr:'🇺🇦', uk:'🇺🇦',
+  };
+
+  // Audio avec drapeaux — format: "EAC3 5.1 FRE"
+  const audioCell = raw => {
+    if (!raw || raw === 'N/A') return `<span class="tag tag-muted">N/A</span>`;
+    const tracks = raw.split(' · ');
+    return `<div class="audio-tracks">` +
+      tracks.map(t => {
+        // Chercher une langue dans le token (dernier mot souvent)
+        const parts = t.trim().split(' ');
+        let flag = '';
+        for (const p of parts) {
+          const f = LANG_FLAGS[p.toLowerCase()];
+          if (f) { flag = f + ' '; break; }
+        }
+        return `<span class="tag tag-muted" title="${esc(t)}">${flag}${esc(t)}</span>`;
+      }).join('') +
+    `</div>`;
+  };
+
+  // Construire les lignes avec createElement pour éviter les problèmes
+  // d'échappement avec les noms de fichiers dans les onclick inline
+  tbody.innerHTML = '';
+  rows.forEach(f => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-file">
+        <span class="f-name" title="${esc(f.name)}">${esc(f.name)}</span>
+        <span class="f-path" title="${esc(f.relative_path)}">${esc(f.relative_path)}</span>
+      </td>
+      <td>${codecTag(f.codec)}</td>
+      <td>
+        <span class="tag tag-muted">${esc(f.res_label)}</span>
+        <span class="mono" style="margin-left:6px;color:var(--txt3)">${esc(f.resolution)}</span>
+      </td>
+      <td>${bitrateTag(f)}</td>
+      <td class="mono">${esc(f.size)}</td>
+      <td class="mono" style="color:var(--txt3)">${esc(f.duration)}</td>
+      <td>${audioCell(f.audio_codec)}</td>
+      <td>
+        <span class="status-pill ${f.optimized ? 'pill-good' : 'pill-bad'}">
+          <span class="pill-dot"></span>
+          ${f.optimized ? 'Optimisé' : 'À transcoder'}
+        </span>
+      </td>
+      <td></td>
+    `;
+    // Bouton éditer via addEventListener — aucun JSON dans le HTML
+    const btn = document.createElement('button');
+    btn.className = 'btn-edit';
+    btn.title = 'Éditer les pistes audio';
+    btn.textContent = '✂ Éditer';
+    btn.addEventListener('click', () => openEditor(f));
+    tr.querySelector('td:last-child').appendChild(btn);
+    tbody.appendChild(tr);
+  });
+}
+
+// ── SORT ──────────────────────────────────────────────────
+const COL_KEYS = ['name','codec','height','bitrate_raw','size_raw','duration_raw','audio_codec','optimized'];
+
+function sortBy(key) {
+  sortDir = sortKey === key ? -sortDir : 1;
+  sortKey = key;
+  document.querySelectorAll('th').forEach((th, i) => {
+    th.classList.remove('asc','desc');
+    if (COL_KEYS[i] === key) th.classList.add(sortDir===1?'asc':'desc');
+  });
+  applyFilters();
+}
+
+function resetFilters() {
+  ['fName','fCodec','fRes','fStatus'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  if (files.length) applyFilters();
+}
+
+// ── UTILS ─────────────────────────────────────────────────
+function showOnly(id) {
+  document.getElementById(id).style.display = '';
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function jss(v) { return JSON.stringify(v); }
+
+function fmtSize(b) {
+  if (b < 1024)        return b + ' B';
+  if (b < 1024*1024)   return (b/1024).toFixed(1) + ' KB';
+  if (b < 1024**3)     return (b/1024/1024).toFixed(1) + ' MB';
+  return (b/1024/1024/1024).toFixed(2) + ' GB';
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function scrollToResults() {
+  document.getElementById('resultsCard')?.scrollIntoView({behavior:'smooth'});
+}
+
+// keyboard
+document.getElementById('pathInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startScan();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); closeEditor(); }
+});
+
+// ── AUDIO EDITOR ─────────────────────────────────────────
+const LANG_FLAGS_EDIT = {
+  fre:'🇫🇷',fra:'🇫🇷',french:'🇫🇷',
+  eng:'🇬🇧',en:'🇬🇧',english:'🇬🇧',
+  deu:'🇩🇪',ger:'🇩🇪',de:'🇩🇪',
+  spa:'🇪🇸',esp:'🇪🇸',es:'🇪🇸',
+  ita:'🇮🇹',it:'🇮🇹',
+  jpn:'🇯🇵',ja:'🇯🇵',
+  kor:'🇰🇷',ko:'🇰🇷',
+  zho:'🇨🇳',chi:'🇨🇳',zh:'🇨🇳',
+  por:'🇵🇹',pt:'🇵🇹',
+  rus:'🇷🇺',ru:'🇷🇺',
+  ara:'🇸🇦',ar:'🇸🇦',
+  nld:'🇳🇱',dut:'🇳🇱',nl:'🇳🇱',
+  pol:'🇵🇱',pl:'🇵🇱',
+  swe:'🇸🇪',sv:'🇸🇪',
+  nor:'🇳🇴',no:'🇳🇴',
+  dan:'🇩🇰',da:'🇩🇰',
+  fin:'🇫🇮',fi:'🇫🇮',
+  tur:'🇹🇷',tr:'🇹🇷',
+  hin:'🇮🇳',hi:'🇮🇳',
+  vie:'🇻🇳',vi:'🇻🇳',
+  ukr:'🇺🇦',uk:'🇺🇦',
+};
+
+let editorFile = null;
+let editorKeep = new Set();
+let currentTab = 'audio';
+let activeJobId = null;
+let activeSSE    = null;
+
+// ── Ouvrir / fermer ──────────────────────────────────────
+function openEditor(fileObj) {
+  editorFile = fileObj;
+  editorKeep = new Set(fileObj.audio_streams.map(s => s.index));
+  activeJobId = null;
+  if (activeSSE) { activeSSE.close(); activeSSE = null; }
+
+  document.getElementById('editorFilePath').textContent = fileObj.path;
+  document.getElementById('editorOverlay').classList.add('open');
+  loadCaps();  // Detecter GPU NVENC
+  document.getElementById('editWarn').style.display   = 'none';
+  document.getElementById('editResult').style.display = 'none';
+  document.getElementById('audioProgress').style.display = 'none';
+  document.getElementById('tcProgress').style.display    = 'none';
+  document.getElementById('applyAudioBtn').disabled = false;
+  document.getElementById('applyAudioBtn').textContent = '✂ Appliquer';
+  document.getElementById('applyTcBtn').disabled = false;
+  document.getElementById('applyTcBtn').innerHTML = '⚙ Transcoder';
+  resetModalCloseBtns();
+
+  switchTab('audio');
+  renderTrackList();
+  updateTcEstimate();
+}
+
+function closeEditor() {
+  // Annuler le job en cours si pas terminé
+  if (activeJobId && activeSSE) {
+    fetch('/api/job/' + activeJobId + '/cancel', {method:'POST'}).catch(()=>{});
+    activeSSE.close(); activeSSE = null; activeJobId = null;
+  }
+  document.getElementById('editorOverlay').classList.remove('open');
+  editorFile = null;
+}
+
+function cancelActiveJob() {
+  if (activeJobId) {
+    fetch('/api/job/' + activeJobId + '/cancel', {method:'POST'}).catch(()=>{});
+    activeJobId = null;
+  }
+  if (activeSSE) { activeSSE.close(); activeSSE = null; }
+  document.getElementById('applyAudioBtn').disabled = false;
+  document.getElementById('applyAudioBtn').textContent = '✂ Appliquer';
+  document.getElementById('applyTcBtn').disabled = false;
+  document.getElementById('applyTcBtn').innerHTML = '⚙ Transcoder';
+  setAudioProgress(0, 'Annulé');
+  setTcProgress(0, 'Annulé');
+  setModalCloseBtnsDone();
+}
+
+function resetModalCloseBtns() {
+  ['audioCloseBtn','tcCloseBtn'].forEach(id => {
+    const b = document.getElementById(id);
+    b.textContent = 'Annuler';
+    b.onclick = closeEditor;
+  });
+}
+
+function setModalCloseBtnsRunning() {
+  ['audioCloseBtn','tcCloseBtn'].forEach(id => {
+    const b = document.getElementById(id);
+    b.textContent = '⏹ Annuler le traitement';
+    b.onclick = cancelActiveJob;
+  });
+}
+
+function setModalCloseBtnsDone() {
+  ['audioCloseBtn','tcCloseBtn'].forEach(id => {
+    const b = document.getElementById(id);
+    b.textContent = 'Fermer';
+    b.onclick = closeEditor;
+  });
+}
+
+function editorBgClick(e) {
+  if (e.target === document.getElementById('editorOverlay')) closeEditor();
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('panel-audio').style.display     = tab==='audio'     ? '' : 'none';
+  document.getElementById('panel-transcode').style.display = tab==='transcode' ? '' : 'none';
+  document.getElementById('tab-audio').classList.toggle('active',     tab==='audio');
+  document.getElementById('tab-transcode').classList.toggle('active', tab==='transcode');
+}
+
+// ── PISTES AUDIO ─────────────────────────────────────────
+function renderTrackList() {
+  const container = document.getElementById('trackList');
+  const streams   = editorFile.audio_streams;
+
+  if (!streams || streams.length === 0) {
+    container.innerHTML = '<div style="padding:30px;text-align:center;color:var(--txt3)">Aucune piste audio</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'track-list';
+
+  streams.forEach(s => {
+    const keeping = editorKeep.has(s.index);
+    const flag    = LANG_FLAGS_EDIT[(s.lang||'').toLowerCase()] || '';
+    const metaParts = [];
+    if (s.ch_str) metaParts.push(s.ch_str + ' canaux');
+    if (s.codec)  metaParts.push(s.codec);
+    if (s.title)  metaParts.push(s.title);
+    const dur = editorFile.duration_raw || 0;
+    let sizeStr = '';
+    if (s.size_exact) {
+      sizeStr = ' · ' + fmtSize(s.size_exact);
+    } else if (s.bitrate_raw && dur) {
+      sizeStr = ' · ~' + fmtSize(Math.round(s.bitrate_raw * dur / 8));
+    }
+
+    const item = document.createElement('div');
+    item.className = 'track-item' + (keeping ? ' selected' : ' to-delete');
+    item.innerHTML = `
+      <div class="track-checkbox">${keeping ? '✓' : '✕'}</div>
+      <div class="track-info">
+        <div class="track-name">
+          ${flag ? '<span style="font-size:18px">'+flag+'</span>' : ''}
+          <span>${esc(s.lang || 'Langue inconnue')}</span>
+          <div class="track-badges">
+            ${s.default ? '<span class="badge-default">Par défaut</span>' : ''}
+            ${s.forced  ? '<span class="badge-forced">Forcé</span>'       : ''}
+            ${!keeping  ? '<span class="badge-del">Sera supprimée</span>' : ''}
+          </div>
+        </div>
+        <div class="track-meta">${esc(metaParts.join(' · ') || 'Piste audio')}${sizeStr} · index ${s.index}</div>
+      </div>`;
+    item.addEventListener('click', () => toggleTrack(s.index));
+    list.appendChild(item);
+  });
+
+  container.appendChild(list);
+  updateAudioSummary();
+}
+
+function toggleTrack(idx) {
+  if (editorKeep.has(idx)) {
+    if (editorKeep.size <= 1) {
+      const w = document.getElementById('editWarn');
+      w.style.display = 'block';
+      setTimeout(() => w.style.display = 'none', 3000);
+      return;
+    }
+    editorKeep.delete(idx);
+  } else {
+    editorKeep.add(idx);
+  }
+  document.getElementById('editWarn').style.display = 'none';
+  renderTrackList();
+}
+
+function updateAudioSummary() {
+  const total   = editorFile.audio_streams.length;
+  const keeping = editorKeep.size;
+  const del     = total - keeping;
+  const el      = document.getElementById('editorSummary');
+  if (del === 0) {
+    el.innerHTML = '<span style="color:var(--txt3)">Décochez les pistes à supprimer.</span>';
+  } else {
+    el.innerHTML = `
+      <span class="sum-item"><span class="sum-dot" style="background:var(--green)"></span>${keeping} conservée(s)</span>
+      <span class="sum-item"><span class="sum-dot" style="background:var(--red)"></span>${del} à supprimer</span>
+      <span style="color:var(--txt3);font-size:11px;margin-left:auto">⚠ Modifie le fichier original</span>`;
+  }
+}
+
+async function applyAudioEdit() {
+  if (!editorFile) return;
+  const del = editorFile.audio_streams.length - editorKeep.size;
+  if (del === 0) { toast('Aucune modification'); return; }
+  if (!confirm(`Supprimer ${del} piste(s) audio de "${editorFile.name}" ?\n\nLe fichier original sera modifié.`)) return;
+
+  const btn = document.getElementById('applyAudioBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳…';
+  document.getElementById('editResult').style.display = 'none';
+  document.getElementById('audioProgress').style.display = 'block';
+  document.getElementById('audioLogBox').textContent = '';
+  setAudioProgress(0, 'Démarrage…');
+
+  const r = await fetch('/api/edit/audio', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({path: editorFile.path, keep_indices: [...editorKeep]})
+  });
+  const d = await r.json();
+  if (!d.job_id) { showAudioError(d.error || 'Erreur'); return; }
+
+  activeJobId = d.job_id;
+  activeSSE   = new EventSource('/api/job/' + d.job_id + '/stream');
+  setModalCloseBtnsRunning();
+
+  activeSSE.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'log') {
+      setAudioProgress(msg.progress, `Traitement… ${msg.progress}%`);
+      if (msg.line) appendLog('audioLogBox', msg.line);
+    } else if (msg.type === 'done') {
+      activeSSE.close(); activeSSE = null; activeJobId = null;
+      setAudioProgress(100, 'Terminé !');
+      // Mettre à jour la liste
+      const idx = files.findIndex(f => f.path === editorFile.path);
+      if (idx !== -1 && msg.result.file) files[idx] = msg.result.file;
+      if (msg.result.file) {
+        editorFile = msg.result.file;
+        editorKeep = new Set(msg.result.file.audio_streams.map(s => s.index));
+      }
+      const res = document.getElementById('editResult');
+      res.style.cssText = 'display:block;background:var(--green-bg);border-color:rgba(52,211,153,.25);color:var(--green);margin:0 20px 4px';
+      res.textContent = `✓ ${msg.result.size_before} → ${msg.result.size_after} (économie : ${msg.result.saved})`;
+      renderTrackList();
+      applyFilters();
+      toast('✓ Pistes audio mises à jour');
+      btn.disabled = false;
+      btn.textContent = '✂ Appliquer';
+      setModalCloseBtnsDone();
+    } else if (msg.type === 'error') {
+      activeSSE.close(); activeSSE = null; activeJobId = null;
+      setModalCloseBtnsDone();
+      showAudioError(msg.error);
+    }
+  };
+  activeSSE.onerror = () => { activeSSE.close(); activeSSE = null; activeJobId = null; setModalCloseBtnsDone(); showAudioError('Connexion SSE perdue'); };
+}
+
+function setAudioProgress(pct, label) {
+  document.getElementById('audioProgressPct').textContent = pct + '%';
+  document.getElementById('audioProgressBar').style.width = pct + '%';
+  document.getElementById('audioProgressLabel').textContent = label;
+}
+
+function showAudioError(msg) {
+  const res = document.getElementById('editResult');
+  res.style.cssText = 'display:block;background:var(--red-bg);border-color:rgba(248,113,113,.25);color:var(--red);margin:0 20px 4px';
+  res.textContent = '✕ ' + msg;
+  const btn = document.getElementById('applyAudioBtn');
+  btn.disabled = false; btn.textContent = '✂ Appliquer';
+}
+
+// ── TRANSCODE ─────────────────────────────────────────────
+
+const CRF_DEFAULTS = { 'hevc-cpu':22, 'hevc-gpu':22, 'av1-cpu':28, 'av1-gpu':28 };
+const CRF_RANGES   = { 'hevc-cpu':[16,32], 'hevc-gpu':[16,32], 'av1-cpu':[20,40], 'av1-gpu':[20,40] };
+let capsNvenc = {hevc: false, av1: false};
+
+async function loadCaps() {
+  try {
+    const d = await (await fetch('/api/caps')).json();
+    capsNvenc = d.nvenc || {hevc:false, av1:false};
+  } catch(e) { capsNvenc = {hevc:false, av1:false}; }
+  applyNvencUI();
+}
+
+function applyNvencUI() {
+  const hasAny = capsNvenc.hevc || capsNvenc.av1;
+  document.getElementById('nvencBadge').style.display = hasAny ? '' : 'none';
+  const gpuLabel = document.getElementById('gpuRadioLabel');
+  const gpuInput = gpuLabel.querySelector('input');
+  if (!hasAny) {
+    gpuLabel.style.opacity = '.4'; gpuLabel.style.pointerEvents = 'none';
+    gpuInput.disabled = true;
+    document.getElementById('gpuName').textContent = '(non disponible)';
+  } else {
+    gpuLabel.style.opacity = ''; gpuLabel.style.pointerEvents = '';
+    gpuInput.disabled = false;
+  }
+  updateTcEstimate();
+}
+
+function onCrfChange() {
+  document.getElementById('crfVal').textContent = document.getElementById('tcCrf').value;
+  updateTcEstimate();
+}
+
+function updateTcEstimate() {
+  if (!editorFile) return;
+  const codec   = document.querySelector('input[name=tcCodec]:checked')?.value || 'hevc';
+  const encoder = document.querySelector('input[name=tcEncoder]:checked')?.value || 'cpu';
+  const key     = codec + '-' + encoder;
+  const sizeB   = editorFile.size_raw;
+
+  const [minC, maxC] = CRF_RANGES[key] || [16,32];
+  const crfRef = CRF_DEFAULTS[key] || 22;
+  const slider = document.getElementById('tcCrf');
+  slider.min = minC; slider.max = maxC;
+  let crf = parseInt(slider.value);
+  if (crf < minC || crf > maxC) { crf = crfRef; slider.value = crfRef; }
+  document.getElementById('crfVal').textContent = crf;
+
+  const delta   = crf - crfRef;
+  const quality = delta < -3 ? 'Qualite max' : delta > 4 ? 'Fichier compact' : 'Qualite optimale';
+  document.getElementById('crfPreset').textContent = quality;
+
+  // ── Estimation affinée basée sur le bitrate source réel ──
+  // Les ratios de compression varient beaucoup selon la qualité source :
+  //   source déjà bien compressé (< 6 Mb/s 1080p) → gain plus modeste ~30-45%
+  //   source peu compressé (> 10 Mb/s 1080p)       → gain plus important ~50-65%
+  // On calcule un ratio de base adapté au bitrate source.
+  const bitrateRaw  = editorFile.bitrate_raw;  // bits/s
+  const bitrateMbps = bitrateRaw / 1_000_000;
+  const height      = editorFile.height;
+
+  // Bitrate "dense" = rapport bitrate/pixel par frame
+  // 1080p référence bien encodé H.264 ≈ 5 Mb/s
+  // Plus le bitrate source est bas, moins on peut gagner (déjà compressé)
+  const bitsPerPixel = bitrateRaw / (editorFile.width * height * 25);
+
+  // Ratio de base HEVC : entre 0.40 (source gonflé) et 0.65 (source dense)
+  // Ratio de base AV1  : entre 0.30 et 0.55
+  let baseHevc, baseAv1;
+  if (bitrateMbps < 4) {
+    // Source déjà très compressé — gain faible
+    baseHevc = 0.62; baseAv1 = 0.48;
+  } else if (bitrateMbps < 8) {
+    // Source bien compressé (cas typique France TV, streaming)
+    baseHevc = 0.52; baseAv1 = 0.40;
+  } else if (bitrateMbps < 15) {
+    // Source moyennement compressé (Blu-ray, WEB-DL HD)
+    baseHevc = 0.45; baseAv1 = 0.34;
+  } else {
+    // Source peu compressé (remux, encode gonflé)
+    baseHevc = 0.38; baseAv1 = 0.28;
+  }
+
+  const baseRatio = codec === 'hevc' ? baseHevc : baseAv1;
+  // Ajustement CRF : chaque 6 pts = ×0.75 (plus conservateur que ×0.7)
+  const crfAdj    = Math.pow(0.75, (crfRef - crf) / 6);
+  const ratio     = Math.min(0.92, Math.max(0.08, baseRatio * crfAdj));
+  const estBytes  = Math.round(sizeB * ratio);
+  const saving    = sizeB - estBytes;
+
+  document.getElementById('estSize').textContent   = formatBytes(estBytes);
+  document.getElementById('estSaving').textContent = '-' + formatBytes(Math.max(0,saving))
+    + ' (' + Math.round(Math.max(0,saving)/sizeB*100) + '%)';
+
+  // Fourchettes réelles basées sur le bitrate source
+  const loHevc = formatBytes(Math.round(sizeB * baseHevc * 0.85));
+  const hiHevc = formatBytes(Math.round(sizeB * baseHevc * 1.15));
+  const loAv1  = formatBytes(Math.round(sizeB * baseAv1  * 0.85));
+  const hiAv1  = formatBytes(Math.round(sizeB * baseAv1  * 1.15));
+
+  document.getElementById('estRangeHevc').textContent = loHevc + ' – ' + hiHevc;
+  document.getElementById('estRangeAv1').textContent  = loAv1  + ' – ' + hiAv1;
+  document.getElementById('estBitrateCtx').textContent =
+    'Source : ' + bitrateMbps.toFixed(1) + ' Mb/s'
+    + (height >= 2160 ? ' · 4K' : height >= 1080 ? ' · 1080p' : ' · ' + height + 'p');
+
+  document.querySelectorAll('.tc-radio').forEach(el => {
+    el.classList.toggle('active', el.querySelector('input')?.checked || false);
+  });
+
+  // Desactiver GPU si codec non supporte par NVENC
+  const gpuLabel = document.getElementById('gpuRadioLabel');
+  const gpuInput = gpuLabel.querySelector('input');
+  const gpuOk = codec === 'hevc' ? capsNvenc.hevc : capsNvenc.av1;
+  gpuLabel.style.opacity       = gpuOk ? '' : '.4';
+  gpuLabel.style.pointerEvents = gpuOk ? '' : 'none';
+  gpuInput.disabled             = !gpuOk;
+  if (!gpuOk && gpuInput.checked)
+    document.querySelector('input[name=tcEncoder][value=cpu]').checked = true;
+}
+
+function formatBytes(b) {
+  if (b < 1024**2) return (b/1024).toFixed(0) + ' KB';
+  if (b < 1024**3) return (b/1024**2).toFixed(1) + ' MB';
+  return (b/1024**3).toFixed(2) + ' GB';
+}
+
+async function applyTranscode() {
+  if (!editorFile) return;
+  const codec     = document.querySelector('input[name=tcCodec]:checked')?.value || 'hevc';
+  const encoder   = document.querySelector('input[name=tcEncoder]:checked')?.value || 'cpu';
+  const crf       = parseInt(document.getElementById('tcCrf').value);
+  const preset    = document.getElementById('tcPreset').value;
+  const audio     = document.getElementById('tcAudio').value;
+  const overwrite = document.querySelector('input[name=tcOutput]:checked')?.value === 'overwrite';
+
+  const label = (codec==='hevc' ? 'HEVC / H.265' : 'AV1') + (encoder==='gpu' ? ' (NVENC GPU)' : ' (CPU)');
+  const confirmMsg = overwrite
+    ? 'Transcoder "' + editorFile.name + '" en ' + label + ' CRF ' + crf + ' ?\n\nL\'original sera remplacé (non récupérable).'
+    : 'Transcoder "' + editorFile.name + '" en ' + label + ' CRF ' + crf + ' ?\n\nUn nouveau fichier sera créé à côté de l\'original.';
+  if (!confirm(confirmMsg)) return;
+
+  const btn = document.getElementById('applyTcBtn');
+  btn.disabled = true; btn.innerHTML = '⏳ Encodage…';
+  document.getElementById('tcProgress').style.display = 'block';
+  document.getElementById('tcLogBox').textContent = '';
+  setTcProgress(0, "Demarrage de l'encodage...");
+  document.getElementById('tcFootNote').textContent = 'Encodage en cours — ne fermez pas cette fenetre.';
+
+  let d;
+  try {
+    const r = await fetch('/api/transcode', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({path:editorFile.path, codec, encoder, crf, preset, audio, overwrite})
+    });
+    d = await r.json();
+  } catch(e) { setTcError('Erreur reseau : ' + e.message); return; }
+
+  if (!d.job_id) { setTcError(d.error || 'Erreur demarrage'); return; }
+
+  activeJobId = d.job_id;
+  activeSSE   = new EventSource('/api/job/' + d.job_id + '/stream');
+  setModalCloseBtnsRunning();
+  activeSSE.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'log') {
+      setTcProgress(msg.progress, 'Encodage… ' + msg.progress + '%');
+      if (msg.line) appendLog('tcLogBox', msg.line);
+    } else if (msg.type === 'done') {
+      activeSSE.close(); activeSSE = null; activeJobId = null;
+      setTcProgress(100, 'Termine !');
+      const res = msg.result;
+      document.getElementById('tcFootNote').innerHTML =
+        '<span style="color:var(--green)">✓ ' + res.size_before + ' → ' + res.size_after
+        + ' · Economie : ' + res.saved + ' (' + res.ratio + '%)</span>'
+        + ' <span style="color:var(--txt3);font-size:10px">' + res.output_path + '</span>';
+      if (res.file) {
+        if (overwrite) {
+          // Remplace l'entrée existante dans la liste
+          const idx = files.findIndex(f => f.path === editorFile.path);
+          if (idx !== -1) files[idx] = res.file; else files.push(res.file);
+          editorFile = res.file;
+        } else {
+          files.push(res.file);
+        }
+        applyFilters();
+      }
+      toast('✓ Transcodage termine');
+      btn.disabled = false; btn.innerHTML = '⚙ Transcoder';
+      setModalCloseBtnsDone();
+    } else if (msg.type === 'error') {
+      activeSSE.close(); activeSSE = null; activeJobId = null;
+      setModalCloseBtnsDone();
+      setTcError(msg.error);
+    }
+  };
+  activeSSE.onerror = () => { activeSSE.close(); activeSSE = null; activeJobId = null; setModalCloseBtnsDone(); setTcError('Connexion SSE perdue'); };
+}
+
+function updateTcFootNote() {
+  const overwrite = document.querySelector('input[name=tcOutput]:checked')?.value === 'overwrite';
+  document.getElementById('tcFootNote').textContent = overwrite
+    ? 'L\'original sera remplacé par le fichier transcodé.'
+    : 'Le fichier transcodé sera créé à côté de l\'original.';
+  document.getElementById('tcEstNote').innerHTML = overwrite
+    ? '⚠ Fourchette basée sur le bitrate source réel.<br>L\'original sera remplacé.'
+    : '⚠ Fourchette basée sur le bitrate source réel.<br>L\'original est conservé.';
+}
+
+function setTcProgress(pct, label) {
+  document.getElementById('tcProgressPct').textContent  = pct + '%';
+  document.getElementById('tcProgressBar').style.width  = pct + '%';
+  document.getElementById('tcProgressLabel').textContent = label;
+}
+
+function setTcError(msg) {
+  setTcProgress(0, '✕ Erreur');
+  document.getElementById('tcLogBox').textContent += '\n✕ ' + msg;
+  const btn = document.getElementById('applyTcBtn');
+  btn.disabled = false; btn.innerHTML = "⚙ Transcoder";
+}
+
+function appendLog(boxId, line) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  box.textContent += line + '\n';
+  box.scrollTop = box.scrollHeight;
+}
+
+</script>
+</body>
+</html>
