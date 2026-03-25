@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**MediaScan** is a Flask-based web app for scanning video libraries to identify files using optimized codecs (HEVC/AV1) versus those needing transcoding. It supports hardware-accelerated transcoding via NVENC and real-time job progress via Server-Sent Events.
+**MediaScan Toolbox** is a Flask-based web app for scanning video libraries to identify files using optimized codecs (HEVC/AV1) versus those needing transcoding. It supports hardware-accelerated transcoding via NVENC and real-time job progress via Server-Sent Events.
 
 **External dependency**: FFmpeg with ffprobe must be installed on the system.
 

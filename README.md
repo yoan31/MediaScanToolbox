@@ -1,10 +1,10 @@
-# MediaScan
+# MediaScan Toolbox
 
 Application web locale pour auditer une vidéothèque et transcoder les fichiers vers des codecs modernes et économes en espace (HEVC / AV1).
 
 ## Fonctionnalités
 
-Pointez vers un dossier, et MediaScan scannera récursivement tous les fichiers vidéo pour identifier ceux déjà optimisés (HEVC ou AV1) et ceux encore dans des formats anciens (H.264, MPEG-2, etc.) qui gaspillent de l'espace disque.
+Pointez vers un dossier, et MediaScan Toolbox scannera récursivement tous les fichiers vidéo pour identifier ceux déjà optimisés (HEVC ou AV1) et ceux encore dans des formats anciens (H.264, MPEG-2, etc.) qui gaspillent de l'espace disque.
 
 À partir de là, vous pouvez :
 
@@ -64,13 +64,13 @@ Sortie : conteneur MKV — `original.hevc.mkv` ou `original.av1.nvenc.mkv` (incr
 
 ---
 
-# MediaScan *(English)*
+# MediaScan Toolbox *(English)*
 
 A local web app to audit a video library and transcode files to modern, space-efficient codecs (HEVC / AV1).
 
 ## What it does
 
-Point it at a folder, and MediaScan will recursively scan all video files and tell you which ones are already optimized (HEVC or AV1) and which ones are still in older formats (H.264, MPEG-2, etc.) wasting disk space.
+Point it at a folder, and MediaScan Toolbox will recursively scan all video files and tell you which ones are already optimized (HEVC or AV1) and which ones are still in older formats (H.264, MPEG-2, etc.) wasting disk space.
 
 From there you can:
 

@@ -10,6 +10,8 @@ from pathlib import Path
 
 app = Flask(__name__)
 
+APP_VERSION = "1.0.0"
+
 SUPPORTED_EXTENSIONS = {'.mkv', '.mp4', '.avi', '.mov', '.m4v', '.webm'}
 
 # jobs[job_id] = { 'lines': [...], 'done': bool, 'error': str|None, 'result': dict|None }
@@ -237,7 +239,7 @@ def run_ffmpeg_job(job_id, cmd, src, tmp, size_before, duration_sec):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', version=APP_VERSION)
 
 @app.route('/api/browse')
 def api_browse():

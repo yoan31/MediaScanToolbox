@@ -1,9 +1,9 @@
 #!/bin/bash
-# MediaScan - Launcher
+# MediaScan Toolbox - Launcher
 
 echo ""
-echo "  MediaScan — Film Codec Scanner"
-echo "  ──────────────────────────────"
+echo "  MediaScan Toolbox — Film Codec Scanner"
+echo "  ───────────────────────────────────────"
 echo ""
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
