@@ -10,7 +10,7 @@ from pathlib import Path
 
 app = Flask(__name__)
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 SUPPORTED_EXTENSIONS = {'.mkv', '.mp4', '.avi', '.mov', '.m4v', '.webm'}
 
@@ -62,6 +62,8 @@ def probe_file(filepath):
     video_stream = None
     audio_tracks = []
     audio_streams_detail = []
+    subtitle_tracks = []
+    subtitle_streams_detail = []
 
     for stream in data.get('streams', []):
         stype = stream.get('codec_type')
@@ -69,6 +71,21 @@ def probe_file(filepath):
 
         if stype == 'video' and video_stream is None:
             video_stream = stream
+        elif stype == 'subtitle':
+            codec   = stream.get('codec_name', '?').upper()
+            lang    = stream.get('tags', {}).get('language', '')
+            title   = stream.get('tags', {}).get('title', '')
+            default = stream.get('disposition', {}).get('default', 0) == 1
+            forced  = stream.get('disposition', {}).get('forced',  0) == 1
+            parts   = [codec]
+            if lang and lang not in ('und', 'unk', ''): parts.append(lang.upper())
+            label = ' '.join(parts)
+            subtitle_tracks.append(label)
+            subtitle_streams_detail.append({
+                'index': idx, 'codec': codec,
+                'lang': lang.upper() if lang and lang not in ('und', 'unk', '') else '',
+                'title': title, 'default': default, 'forced': forced, 'label': label,
+            })
         elif stype == 'audio':
             codec    = stream.get('codec_name', '?').upper()
             lang     = stream.get('tags', {}).get('language', '')
@@ -115,8 +132,10 @@ def probe_file(filepath):
         'path':           str(filepath),
         'relative_path':  str(Path(filepath).parent),
         'codec':          codec,
-        'audio_codec':    ' · '.join(audio_tracks) if audio_tracks else 'N/A',
-        'audio_streams':  audio_streams_detail,
+        'audio_codec':       ' · '.join(audio_tracks) if audio_tracks else 'N/A',
+        'audio_streams':     audio_streams_detail,
+        'subtitle_tracks':   ' · '.join(subtitle_tracks) if subtitle_tracks else '',
+        'subtitle_streams':  subtitle_streams_detail,
         'resolution':     f"{width}x{height}" if width and height else "N/A",
         'res_label':      label,
         'width':          width,
@@ -351,6 +370,44 @@ def api_edit_audio():
     for idx in keep_indices:
         cmd += ['-map', f'0:{idx}']
     cmd += ['-map', '0:s?', '-c', 'copy', '-map_metadata', '0', str(tmp)]
+
+    job_id = str(uuid.uuid4())
+    with jobs_lock:
+        jobs[job_id] = {'lines': [], 'done': False, 'progress': 0, 'error': None, 'result': None}
+
+    t = threading.Thread(target=run_ffmpeg_job,
+                         args=(job_id, cmd, src, tmp, size_bef, dur_sec),
+                         daemon=True)
+    t.start()
+    return jsonify({'job_id': job_id})
+
+# ── EDIT STREAMS : audio + sous-titres en une passe ──────
+
+@app.route('/api/edit/streams', methods=['POST'])
+def api_edit_streams():
+    """Supprime des pistes audio et/ou sous-titres en une seule passe ffmpeg."""
+    data          = request.get_json()
+    filepath      = data.get('path', '').strip()
+    keep_audio    = data.get('keep_audio', [])
+    keep_subtitle = data.get('keep_subtitle', [])
+
+    if not filepath:  return jsonify({'error': 'path requis'}), 400
+    if not keep_audio: return jsonify({'error': 'Impossible de supprimer toutes les pistes audio'}), 400
+
+    src = Path(filepath)
+    if not src.exists(): return jsonify({'error': 'Fichier introuvable'}), 404
+
+    tmp      = src.with_name(src.stem + '.__tmp__' + src.suffix)
+    size_bef = src.stat().st_size
+    info     = probe_file(src)
+    dur_sec  = info['duration_raw'] if info else 0
+
+    cmd = ['ffmpeg', '-y', '-i', str(src), '-map', '0:v']
+    for idx in keep_audio:
+        cmd += ['-map', f'0:{idx}']
+    for idx in keep_subtitle:
+        cmd += ['-map', f'0:{idx}']
+    cmd += ['-c', 'copy', '-map_metadata', '0', str(tmp)]
 
     job_id = str(uuid.uuid4())
     with jobs_lock:

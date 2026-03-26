@@ -5,6 +5,23 @@ Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
 ---
 
+## [1.1.0] — 2026-03-26
+
+### Sous-titres
+
+- **Affichage des pistes de sous-titres** — nouvelle colonne dans le tableau principal avec drapeaux de langue et codec (SRT, ASS, PGS, etc.) pour chaque piste
+- **Extraction ffprobe** — langue, codec, titre, piste par défaut / forcée pour chaque flux sous-titre
+- **Onglet "CC Sous-titres"** dans la modale d'édition — liste interactive des pistes avec les mêmes badges et styles que l'onglet audio
+- **Suppression sélective** — possibilité de supprimer certaines ou toutes les pistes de sous-titres (contrairement aux pistes audio, supprimer toutes les pistes est autorisé)
+
+### Édition groupée audio + sous-titres
+
+- **Route `/api/edit/streams`** — nouvelle route backend qui prend `keep_audio` et `keep_subtitle` et exécute une seule passe ffmpeg atomique
+- **Bouton "Appliquer" unifié** — depuis n'importe quel onglet (Audio ou Sous-titres), le bouton vérifie les changements en attente dans les **deux** onglets et les applique ensemble en une seule opération
+- **Confirmation groupée** — la boîte de dialogue liste explicitement toutes les suppressions audio et sous-titres avant de procéder
+
+---
+
 ## [1.0.0] — 2026-03-25
 
 ### Fonctionnalités de base

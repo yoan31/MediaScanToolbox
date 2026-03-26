@@ -925,6 +925,7 @@ td.td-file { max-width: 300px; }
                 <th onclick="sortBy('size_raw')">Taille <span class="si"></span></th>
                 <th onclick="sortBy('duration_raw')">Durée <span class="si"></span></th>
                 <th onclick="sortBy('audio_codec')">Audio <span class="si"></span></th>
+                <th>Sous-titres</th>
                 <th onclick="sortBy('optimized')">Statut <span class="si"></span></th>
                 <th style="width:90px"></th>
               </tr>
@@ -988,6 +989,7 @@ td.td-file { max-width: 300px; }
     <!-- Onglets -->
     <div class="editor-tabs">
       <button class="etab active" id="tab-audio" onclick="switchTab('audio')">✂ Pistes audio</button>
+      <button class="etab" id="tab-subtitle" onclick="switchTab('subtitle')">CC Sous-titres</button>
       <button class="etab" id="tab-transcode" onclick="switchTab('transcode')">⚙ Transcoder</button>
     </div>
 
@@ -1017,7 +1019,36 @@ td.td-file { max-width: 300px; }
           Décochez les pistes à <strong style="color:var(--red)">supprimer</strong>. Sans réencodage.
         </div>
         <button class="btn btn-default" id="audioCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
-        <button class="btn btn-primary" id="applyAudioBtn" onclick="applyAudioEdit()" style="height:38px">✂ Appliquer</button>
+        <button class="btn btn-primary" id="applyAudioBtn" onclick="applyAllEdits()" style="height:38px">✂ Appliquer</button>
+      </div>
+    </div>
+
+    <!-- ── ONGLET SOUS-TITRES ── -->
+    <div id="panel-subtitle" style="display:none">
+      <div class="edit-result" id="editSubResult"></div>
+      <div class="editor-summary" id="editorSubSummary"></div>
+      <div class="dir-scroll" id="subTrackList" style="max-height:260px"></div>
+
+      <!-- Progression sous-titres -->
+      <div id="subProgress" style="display:none;padding:16px 20px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:12px;color:var(--txt2)" id="subProgressLabel">Traitement…</span>
+          <span class="mono" style="font-size:12px;color:var(--accent)" id="subProgressPct">0%</span>
+        </div>
+        <div class="progress-track" style="height:6px;border-radius:3px">
+          <div class="progress-fill" id="subProgressBar" style="width:0%;transition:width .3s;animation:none;background:var(--accent)"></div>
+        </div>
+        <div id="subLogBox" style="margin-top:10px;background:var(--panel2);border:1px solid var(--line);
+             border-radius:6px;padding:10px;max-height:100px;overflow-y:auto;
+             font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3);white-space:pre-wrap"></div>
+      </div>
+
+      <div class="modal-foot">
+        <div style="font-size:12px;color:var(--txt3);flex:1">
+          Décochez les pistes à <strong style="color:var(--red)">supprimer</strong>. Tout supprimer est autorisé. Sans réencodage.
+        </div>
+        <button class="btn btn-default" id="subtitleCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
+        <button class="btn btn-primary" id="applySubBtn" onclick="applyAllEdits()" style="height:38px">✂ Appliquer</button>
       </div>
     </div>
 
@@ -1584,6 +1615,19 @@ function applyFilters() {
     `</div>`;
   };
 
+  // Sous-titres : drapeaux + codec
+  const subCell = streams => {
+    if (!streams || streams.length === 0)
+      return `<span style="color:var(--txt3);font-size:12px">—</span>`;
+    return `<div class="audio-tracks">` +
+      streams.slice(0, 4).map(s => {
+        const flag = LANG_FLAGS[(s.lang||'').toLowerCase()] || '';
+        return `<span class="tag tag-muted" title="${esc(s.label)}">${flag ? flag+' ' : ''}${esc(s.codec)}</span>`;
+      }).join('') +
+      (streams.length > 4 ? `<span class="tag tag-muted">+${streams.length-4}</span>` : '') +
+    `</div>`;
+  };
+
   // Construire les lignes avec createElement pour éviter les problèmes
   // d'échappement avec les noms de fichiers dans les onclick inline
   tbody.innerHTML = '';
@@ -1603,6 +1647,7 @@ function applyFilters() {
       <td class="mono">${esc(f.size)}</td>
       <td class="mono" style="color:var(--txt3)">${esc(f.duration)}</td>
       <td>${audioCell(f.audio_codec)}</td>
+      <td>${subCell(f.subtitle_streams)}</td>
       <td>
         <span class="status-pill ${f.optimized ? 'pill-good' : 'pill-bad'}">
           <span class="pill-dot"></span>
@@ -1709,6 +1754,7 @@ const LANG_FLAGS_EDIT = {
 
 let editorFile = null;
 let editorKeep = new Set();
+let editorSubKeep = new Set();
 let currentTab = 'audio';
 let activeJobId = null;
 let activeSSE    = null;
@@ -1716,25 +1762,31 @@ let activeSSE    = null;
 // ── Ouvrir / fermer ──────────────────────────────────────
 function openEditor(fileObj) {
   editorFile = fileObj;
-  editorKeep = new Set(fileObj.audio_streams.map(s => s.index));
+  editorKeep    = new Set(fileObj.audio_streams.map(s => s.index));
+  editorSubKeep = new Set((fileObj.subtitle_streams || []).map(s => s.index));
   activeJobId = null;
   if (activeSSE) { activeSSE.close(); activeSSE = null; }
 
   document.getElementById('editorFilePath').textContent = fileObj.path;
   document.getElementById('editorOverlay').classList.add('open');
   loadCaps();  // Detecter GPU NVENC
-  document.getElementById('editWarn').style.display   = 'none';
-  document.getElementById('editResult').style.display = 'none';
+  document.getElementById('editWarn').style.display      = 'none';
+  document.getElementById('editResult').style.display    = 'none';
+  document.getElementById('editSubResult').style.display = 'none';
   document.getElementById('audioProgress').style.display = 'none';
+  document.getElementById('subProgress').style.display   = 'none';
   document.getElementById('tcProgress').style.display    = 'none';
   document.getElementById('applyAudioBtn').disabled = false;
   document.getElementById('applyAudioBtn').textContent = '✂ Appliquer';
+  document.getElementById('applySubBtn').disabled = false;
+  document.getElementById('applySubBtn').textContent = '✂ Appliquer';
   document.getElementById('applyTcBtn').disabled = false;
   document.getElementById('applyTcBtn').innerHTML = '⚙ Transcoder';
   resetModalCloseBtns();
 
   switchTab('audio');
   renderTrackList();
+  renderSubTrackList();
   updateTcEstimate();
 }
 
@@ -1756,15 +1808,18 @@ function cancelActiveJob() {
   if (activeSSE) { activeSSE.close(); activeSSE = null; }
   document.getElementById('applyAudioBtn').disabled = false;
   document.getElementById('applyAudioBtn').textContent = '✂ Appliquer';
+  document.getElementById('applySubBtn').disabled = false;
+  document.getElementById('applySubBtn').textContent = '✂ Appliquer';
   document.getElementById('applyTcBtn').disabled = false;
   document.getElementById('applyTcBtn').innerHTML = '⚙ Transcoder';
   setAudioProgress(0, 'Annulé');
+  setSubProgress(0, 'Annulé');
   setTcProgress(0, 'Annulé');
   setModalCloseBtnsDone();
 }
 
 function resetModalCloseBtns() {
-  ['audioCloseBtn','tcCloseBtn'].forEach(id => {
+  ['audioCloseBtn','subtitleCloseBtn','tcCloseBtn'].forEach(id => {
     const b = document.getElementById(id);
     b.textContent = 'Annuler';
     b.onclick = closeEditor;
@@ -1772,7 +1827,7 @@ function resetModalCloseBtns() {
 }
 
 function setModalCloseBtnsRunning() {
-  ['audioCloseBtn','tcCloseBtn'].forEach(id => {
+  ['audioCloseBtn','subtitleCloseBtn','tcCloseBtn'].forEach(id => {
     const b = document.getElementById(id);
     b.textContent = '⏹ Annuler le traitement';
     b.onclick = cancelActiveJob;
@@ -1780,7 +1835,7 @@ function setModalCloseBtnsRunning() {
 }
 
 function setModalCloseBtnsDone() {
-  ['audioCloseBtn','tcCloseBtn'].forEach(id => {
+  ['audioCloseBtn','subtitleCloseBtn','tcCloseBtn'].forEach(id => {
     const b = document.getElementById(id);
     b.textContent = 'Fermer';
     b.onclick = closeEditor;
@@ -1793,10 +1848,12 @@ function editorBgClick(e) {
 
 function switchTab(tab) {
   currentTab = tab;
-  document.getElementById('panel-audio').style.display     = tab==='audio'     ? '' : 'none';
-  document.getElementById('panel-transcode').style.display = tab==='transcode' ? '' : 'none';
-  document.getElementById('tab-audio').classList.toggle('active',     tab==='audio');
-  document.getElementById('tab-transcode').classList.toggle('active', tab==='transcode');
+  document.getElementById('panel-audio').style.display    = tab==='audio'    ? '' : 'none';
+  document.getElementById('panel-subtitle').style.display = tab==='subtitle' ? '' : 'none';
+  document.getElementById('panel-transcode').style.display= tab==='transcode'? '' : 'none';
+  document.getElementById('tab-audio').classList.toggle('active',    tab==='audio');
+  document.getElementById('tab-subtitle').classList.toggle('active', tab==='subtitle');
+  document.getElementById('tab-transcode').classList.toggle('active',tab==='transcode');
 }
 
 // ── PISTES AUDIO ─────────────────────────────────────────
@@ -1883,26 +1940,56 @@ function updateAudioSummary() {
   }
 }
 
-async function applyAudioEdit() {
+async function applyAllEdits() {
   if (!editorFile) return;
-  const del = editorFile.audio_streams.length - editorKeep.size;
-  if (del === 0) { toast('Aucune modification'); return; }
-  if (!confirm(`Supprimer ${del} piste(s) audio de "${editorFile.name}" ?\n\nLe fichier original sera modifié.`)) return;
 
-  const btn = document.getElementById('applyAudioBtn');
-  btn.disabled = true;
-  btn.textContent = '⏳…';
-  document.getElementById('editResult').style.display = 'none';
-  document.getElementById('audioProgress').style.display = 'block';
-  document.getElementById('audioLogBox').textContent = '';
-  setAudioProgress(0, 'Démarrage…');
+  const audioStreams = editorFile.audio_streams || [];
+  const subStreams   = editorFile.subtitle_streams || [];
 
-  const r = await fetch('/api/edit/audio', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({path: editorFile.path, keep_indices: [...editorKeep]})
+  const audioDel = audioStreams.length - editorKeep.size;
+  const subDel   = subStreams.length   - editorSubKeep.size;
+
+  if (audioDel === 0 && subDel === 0) { toast('Aucune modification'); return; }
+
+  // Construire le message de confirmation
+  const lines = [];
+  if (audioDel > 0) lines.push(`• ${audioDel} piste(s) audio supprimée(s)`);
+  if (subDel   > 0) lines.push(`• ${subDel} piste(s) de sous-titres supprimée(s)${editorSubKeep.size === 0 ? ' (toutes)' : ''}`);
+  if (!confirm(`Modifications pour "${editorFile.name}" :\n${lines.join('\n')}\n\nLe fichier original sera modifié.`)) return;
+
+  // Désactiver les deux boutons Appliquer
+  const audioBtn = document.getElementById('applyAudioBtn');
+  const subBtn   = document.getElementById('applySubBtn');
+  audioBtn.disabled = true; audioBtn.textContent = '⏳…';
+  subBtn.disabled   = true; subBtn.textContent   = '⏳…';
+
+  // Afficher la progression dans l'onglet actif
+  const inSub    = currentTab === 'subtitle';
+  const progEl   = inSub ? 'subProgress'   : 'audioProgress';
+  const logEl    = inSub ? 'subLogBox'     : 'audioLogBox';
+  const setProg  = inSub ? setSubProgress  : setAudioProgress;
+  const resultEl = inSub ? 'editSubResult' : 'editResult';
+
+  document.getElementById(progEl).style.display = 'block';
+  document.getElementById(logEl).textContent = '';
+  setProg(0, 'Démarrage…');
+
+  const r = await fetch('/api/edit/streams', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      path:          editorFile.path,
+      keep_audio:    [...editorKeep],
+      keep_subtitle: [...editorSubKeep],
+    })
   });
   const d = await r.json();
-  if (!d.job_id) { showAudioError(d.error || 'Erreur'); return; }
+  if (!d.job_id) {
+    showAudioError(d.error || 'Erreur');
+    showSubError(d.error || 'Erreur');
+    audioBtn.disabled = false; audioBtn.textContent = '✂ Appliquer';
+    subBtn.disabled   = false; subBtn.textContent   = '✂ Appliquer';
+    return;
+  }
 
   activeJobId = d.job_id;
   activeSSE   = new EventSource('/api/job/' + d.job_id + '/stream');
@@ -1911,34 +1998,41 @@ async function applyAudioEdit() {
   activeSSE.onmessage = e => {
     const msg = JSON.parse(e.data);
     if (msg.type === 'log') {
-      setAudioProgress(msg.progress, `Traitement… ${msg.progress}%`);
-      if (msg.line) appendLog('audioLogBox', msg.line);
+      setProg(msg.progress, `Traitement… ${msg.progress}%`);
+      if (msg.line) appendLog(logEl, msg.line);
     } else if (msg.type === 'done') {
       activeSSE.close(); activeSSE = null; activeJobId = null;
-      setAudioProgress(100, 'Terminé !');
-      // Mettre à jour la liste
+      setProg(100, 'Terminé !');
       const idx = files.findIndex(f => f.path === editorFile.path);
       if (idx !== -1 && msg.result.file) files[idx] = msg.result.file;
       if (msg.result.file) {
-        editorFile = msg.result.file;
-        editorKeep = new Set(msg.result.file.audio_streams.map(s => s.index));
+        editorFile    = msg.result.file;
+        editorKeep    = new Set(msg.result.file.audio_streams.map(s => s.index));
+        editorSubKeep = new Set((msg.result.file.subtitle_streams || []).map(s => s.index));
       }
-      const res = document.getElementById('editResult');
+      const res = document.getElementById(resultEl);
       res.style.cssText = 'display:block;background:var(--green-bg);border-color:rgba(52,211,153,.25);color:var(--green);margin:0 20px 4px';
       res.textContent = `✓ ${msg.result.size_before} → ${msg.result.size_after} (économie : ${msg.result.saved})`;
       renderTrackList();
+      renderSubTrackList();
       applyFilters();
-      toast('✓ Pistes audio mises à jour');
-      btn.disabled = false;
-      btn.textContent = '✂ Appliquer';
+      toast('✓ Modifications appliquées');
+      audioBtn.disabled = false; audioBtn.textContent = '✂ Appliquer';
+      subBtn.disabled   = false; subBtn.textContent   = '✂ Appliquer';
       setModalCloseBtnsDone();
     } else if (msg.type === 'error') {
       activeSSE.close(); activeSSE = null; activeJobId = null;
       setModalCloseBtnsDone();
       showAudioError(msg.error);
+      showSubError(msg.error);
     }
   };
-  activeSSE.onerror = () => { activeSSE.close(); activeSSE = null; activeJobId = null; setModalCloseBtnsDone(); showAudioError('Connexion SSE perdue'); };
+  activeSSE.onerror = () => {
+    activeSSE.close(); activeSSE = null; activeJobId = null;
+    setModalCloseBtnsDone();
+    showAudioError('Connexion SSE perdue');
+    showSubError('Connexion SSE perdue');
+  };
 }
 
 function setAudioProgress(pct, label) {
@@ -1952,6 +2046,88 @@ function showAudioError(msg) {
   res.style.cssText = 'display:block;background:var(--red-bg);border-color:rgba(248,113,113,.25);color:var(--red);margin:0 20px 4px';
   res.textContent = '✕ ' + msg;
   const btn = document.getElementById('applyAudioBtn');
+  btn.disabled = false; btn.textContent = '✂ Appliquer';
+}
+
+// ── PISTES SOUS-TITRES ────────────────────────────────────
+function renderSubTrackList() {
+  const container = document.getElementById('subTrackList');
+  const streams   = editorFile.subtitle_streams || [];
+
+  if (streams.length === 0) {
+    container.innerHTML = '<div style="padding:30px;text-align:center;color:var(--txt3)">Aucun sous-titre</div>';
+    document.getElementById('editorSubSummary').innerHTML = '<span style="color:var(--txt3)">Ce fichier ne contient pas de sous-titres.</span>';
+    document.getElementById('applySubBtn').disabled = true;
+    return;
+  }
+
+  document.getElementById('applySubBtn').disabled = false;
+  container.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'track-list';
+
+  streams.forEach(s => {
+    const keeping = editorSubKeep.has(s.index);
+    const flag    = LANG_FLAGS_EDIT[(s.lang||'').toLowerCase()] || '';
+    const metaParts = [s.codec];
+    if (s.title) metaParts.push(s.title);
+
+    const item = document.createElement('div');
+    item.className = 'track-item' + (keeping ? ' selected' : ' to-delete');
+    item.innerHTML = `
+      <div class="track-checkbox">${keeping ? '✓' : '✕'}</div>
+      <div class="track-info">
+        <div class="track-name">
+          ${flag ? '<span style="font-size:18px">'+flag+'</span>' : ''}
+          <span>${esc(s.lang || 'Langue inconnue')}</span>
+          <div class="track-badges">
+            ${s.default ? '<span class="badge-default">Par défaut</span>' : ''}
+            ${s.forced  ? '<span class="badge-forced">Forcé</span>'       : ''}
+            ${!keeping  ? '<span class="badge-del">Sera supprimée</span>' : ''}
+          </div>
+        </div>
+        <div class="track-meta">${esc(metaParts.join(' · '))} · index ${s.index}</div>
+      </div>`;
+    item.addEventListener('click', () => toggleSubTrack(s.index));
+    list.appendChild(item);
+  });
+
+  container.appendChild(list);
+  updateSubSummary();
+}
+
+function toggleSubTrack(idx) {
+  if (editorSubKeep.has(idx)) editorSubKeep.delete(idx);
+  else editorSubKeep.add(idx);
+  renderSubTrackList();
+}
+
+function updateSubSummary() {
+  const total   = (editorFile.subtitle_streams || []).length;
+  const keeping = editorSubKeep.size;
+  const del     = total - keeping;
+  const el      = document.getElementById('editorSubSummary');
+  if (del === 0) {
+    el.innerHTML = '<span style="color:var(--txt3)">Décochez les pistes à supprimer.</span>';
+  } else {
+    el.innerHTML = `
+      <span class="sum-item"><span class="sum-dot" style="background:var(--green)"></span>${keeping} conservée(s)</span>
+      <span class="sum-item"><span class="sum-dot" style="background:var(--red)"></span>${del} à supprimer</span>
+      <span style="color:var(--txt3);font-size:11px;margin-left:auto">⚠ Modifie le fichier original</span>`;
+  }
+}
+
+function setSubProgress(pct, label) {
+  document.getElementById('subProgressPct').textContent   = pct + '%';
+  document.getElementById('subProgressBar').style.width   = pct + '%';
+  document.getElementById('subProgressLabel').textContent = label;
+}
+
+function showSubError(msg) {
+  const res = document.getElementById('editSubResult');
+  res.style.cssText = 'display:block;background:var(--red-bg);border-color:rgba(248,113,113,.25);color:var(--red);margin:0 20px 4px';
+  res.textContent = '✕ ' + msg;
+  const btn = document.getElementById('applySubBtn');
   btn.disabled = false; btn.textContent = '✂ Appliquer';
 }
 
