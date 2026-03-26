@@ -10,10 +10,12 @@ Pointez vers un dossier, et MediaScan Toolbox scannera récursivement tous les f
 
 - **Transcoder** n'importe quel fichier en HEVC ou AV1, avec le CPU ou un GPU NVIDIA (NVENC)
 - **Éditer les pistes audio** — conserver ou supprimer des pistes individuelles avant ou après le transcodage
+- **Éditer les sous-titres** — conserver ou supprimer des pistes de sous-titres individuelles (suppression totale autorisée)
+- **Combiner les modifications** — les changements audio et sous-titres sont appliqués ensemble en une seule passe ffmpeg
 - **Suivre la progression** en temps réel via une barre de progression live (Server-Sent Events)
 - **Annuler** un job en cours à tout moment
 
-Chaque fichier scanné affiche son codec, sa résolution, son débit, sa taille, et ses pistes audio avec leur langue, codec, canaux et taille estimée.
+Chaque fichier scanné affiche son codec, sa résolution, son débit, sa taille, ses pistes audio et ses pistes de sous-titres avec leur langue et codec.
 
 ## Prérequis
 
@@ -76,10 +78,12 @@ From there you can:
 
 - **Transcode** any file to HEVC or AV1, with CPU or NVIDIA GPU (NVENC)
 - **Edit audio tracks** — keep or remove individual tracks before or after transcoding
+- **Edit subtitle tracks** — keep or remove individual subtitle tracks (removing all is allowed)
+- **Combine edits** — audio and subtitle changes are applied together in a single ffmpeg pass
 - **Monitor progress** in real time via a live progress bar (Server-Sent Events)
 - **Cancel** a running job at any time
 
-Each scanned file shows its codec, resolution, bitrate, file size, and audio tracks with their language, codec, channels, and estimated size.
+Each scanned file shows its codec, resolution, bitrate, file size, audio tracks and subtitle tracks with their language and codec.
 
 ## Requirements
 
