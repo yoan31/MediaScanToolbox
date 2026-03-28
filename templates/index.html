@@ -854,6 +854,33 @@ td.td-file { max-width: 300px; }
   flex: 1; font-size: 11px; color: var(--txt3);
   font-family: 'JetBrains Mono', monospace;
 }
+/* ─── DRAG & DROP ───────────────────────────────────────── */
+.field.drag-over {
+  border-radius: 8px;
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+  background: var(--accent-bg);
+}
+.field.drag-over input { background: transparent; }
+
+/* ─── HISTORIQUE DOSSIERS RÉCENTS ───────────────────────── */
+.recent-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 26px; padding: 0 10px;
+  background: var(--panel2); border: 1px solid var(--line2);
+  border-radius: 13px; font-size: 11px; color: var(--txt2);
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+  transition: all .12s;
+}
+.recent-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+.recent-chip-del {
+  font-size: 10px; opacity: .45; flex-shrink: 0;
+  margin-left: 2px; border: none; background: none;
+  color: inherit; cursor: pointer; padding: 0 2px; line-height: 1;
+}
+.recent-chip-del:hover { opacity: 1; color: var(--red) !important; }
 </style>
 </head>
 <body>
@@ -962,10 +989,14 @@ td.td-file { max-width: 300px; }
           <button class="btn btn-primary" id="scanBtn" onclick="startScan()">
             <span>🔍</span> Analyser
           </button>
+          <button class="btn btn-default" id="quickScanBtn" onclick="quickScan()" style="display:none" title="">
+            ⚡ Rapide
+          </button>
           <button class="btn btn-subtle" id="clearBtn" onclick="clearAll()" style="display:none">
             ✕ Effacer
           </button>
         </div>
+        <div id="recentDirs" style="display:none;margin-top:10px;flex-wrap:wrap;gap:6px;align-items:center"></div>
         <div class="progress-area" id="progressArea">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
             <span class="progress-msg" id="progressMsg">Découverte des fichiers…</span>
@@ -1499,6 +1530,7 @@ function confirmPath() {
 async function startScan() {
   const path = document.getElementById('pathInput').value.trim();
   if (!path) { toast('Veuillez entrer un chemin'); return; }
+  saveToHistory(path);
 
   files = [];
   const btn = document.getElementById('scanBtn');
@@ -1878,6 +1910,111 @@ document.getElementById('pathInput').addEventListener('keydown', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeModal(); closeEditor(); }
 });
+
+// ── HISTORIQUE DOSSIERS RÉCENTS ───────────────────────────
+const HISTORY_KEY = 'mst_recent_dirs';
+const HISTORY_MAX = 5;
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveToHistory(path) {
+  let dirs = getHistory().filter(d => d !== path);
+  dirs.unshift(path);
+  if (dirs.length > HISTORY_MAX) dirs = dirs.slice(0, HISTORY_MAX);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(dirs));
+  renderHistory();
+}
+
+function removeFromHistory(path) {
+  const dirs = getHistory().filter(d => d !== path);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(dirs));
+  renderHistory();
+}
+
+function renderHistory() {
+  const container = document.getElementById('recentDirs');
+  const dirs = getHistory();
+  if (!dirs.length) { container.style.display = 'none'; updateQuickScanBtn(); return; }
+
+  container.style.display = 'flex';
+  container.innerHTML = '<span style="font-size:11px;color:var(--txt3);flex-shrink:0">Récents :</span>';
+  dirs.forEach(dir => {
+    const chip = document.createElement('button');
+    chip.className = 'recent-chip';
+    chip.title = dir;
+    const name = dir.split('/').filter(Boolean).pop() || dir;
+    const safeDir = dir.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    chip.innerHTML =
+      '📁 ' + esc(name) +
+      '<button class="recent-chip-del" onclick="event.stopPropagation();removeFromHistory(\'' + safeDir + '\')" title="Retirer">✕</button>';
+    chip.addEventListener('click', () => {
+      document.getElementById('pathInput').value = dir;
+    });
+    container.appendChild(chip);
+  });
+  updateQuickScanBtn();
+}
+
+// ── SCAN RAPIDE ───────────────────────────────────────────
+function updateQuickScanBtn() {
+  const btn  = document.getElementById('quickScanBtn');
+  const last = getHistory()[0];
+  if (last) {
+    const name = last.split('/').filter(Boolean).pop() || last;
+    btn.style.display = '';
+    btn.title = last;
+    btn.innerHTML = '⚡ ' + esc(name);
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function quickScan() {
+  const last = getHistory()[0];
+  if (!last) return;
+  document.getElementById('pathInput').value = last;
+  startScan();
+}
+
+// ── DRAG & DROP ───────────────────────────────────────────
+(function() {
+  const field = document.querySelector('.field');
+  field.addEventListener('dragover', e => {
+    e.preventDefault();
+    field.classList.add('drag-over');
+  });
+  field.addEventListener('dragleave', e => {
+    if (!field.contains(e.relatedTarget)) field.classList.remove('drag-over');
+  });
+  field.addEventListener('drop', e => {
+    e.preventDefault();
+    field.classList.remove('drag-over');
+    // text/uri-list : envoyé par les gestionnaires de fichiers Linux (file:///path)
+    const uriList = e.dataTransfer.getData('text/uri-list');
+    if (uriList) {
+      const uri = uriList.split('\n').map(s => s.trim()).find(s => s.startsWith('file://'));
+      if (uri) {
+        document.getElementById('pathInput').value = decodeURIComponent(uri.replace('file://', ''));
+        toast('📁 Dossier défini');
+        return;
+      }
+    }
+    // Fallback Electron / Chromium : File.path
+    const f = e.dataTransfer.files[0];
+    if (f && f.path) {
+      document.getElementById('pathInput').value = f.path;
+      toast('📁 Dossier défini');
+      return;
+    }
+    toast('Impossible de lire le chemin — tapez-le manuellement');
+  });
+})();
+
+// ── INIT ─────────────────────────────────────────────────
+renderHistory();
 
 // ── AUDIO EDITOR ─────────────────────────────────────────
 const LANG_FLAGS_EDIT = {
