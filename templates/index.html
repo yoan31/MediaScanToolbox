@@ -728,6 +728,111 @@ td.td-file { max-width: 300px; }
   .main-wrap { margin-left: 0; }
   .stats-grid { grid-template-columns: repeat(2,1fr); }
 }
+
+/* ─── TASK QUEUE PANEL ──────────────────────────────────── */
+.queue-panel {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  width: 360px;
+  max-width: calc(100vw - 44px);
+  background: var(--panel);
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.6);
+  z-index: 300;
+  overflow: hidden;
+}
+.queue-panel--empty { display: none; }
+.queue-panel.queue-collapsed .queue-body { display: none; }
+
+.queue-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--line);
+  user-select: none;
+  transition: background .12s;
+}
+.queue-header:hover { background: var(--panel3, #2a2d35); }
+
+.queue-title {
+  font-size: 11px; font-weight: 600;
+  color: var(--txt2); flex: 1;
+  text-transform: uppercase; letter-spacing: .6px;
+}
+.queue-badge {
+  min-width: 20px; height: 20px;
+  background: var(--accent); color: #fff;
+  border-radius: 10px; font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 6px; transition: background .2s;
+}
+.queue-badge.badge-running { background: var(--amber); }
+.queue-badge.badge-done    { background: var(--green); }
+.queue-badge.badge-error   { background: var(--red);   }
+.queue-toggle-icon { font-size: 9px; color: var(--txt3); transition: transform .2s; }
+.queue-panel.queue-collapsed .queue-toggle-icon { transform: rotate(180deg); }
+
+.queue-body { max-height: 380px; display: flex; flex-direction: column; }
+.queue-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 28px 16px; gap: 6px;
+}
+#queueList { flex: 1; overflow-y: auto; max-height: 280px; }
+
+.queue-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line);
+  transition: background .1s;
+}
+.queue-item:last-child { border-bottom: none; }
+.queue-item:hover { background: var(--panel2); }
+
+.qi-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.qs-pending { background: var(--txt3); }
+.qs-running { background: var(--amber); animation: pulse .8s ease infinite alternate; }
+.qs-done    { background: var(--green); }
+.qs-error   { background: var(--red);  }
+
+.qi-info { flex: 1; min-width: 0; }
+.qi-name {
+  font-size: 12px; font-weight: 500; color: var(--txt);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qi-label {
+  font-size: 11px; color: var(--txt3); margin-top: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qi-err {
+  font-size: 10px; color: var(--red); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qi-remove {
+  width: 22px; height: 22px; border-radius: 4px;
+  background: none; border: none;
+  color: var(--txt3); font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .12s; flex-shrink: 0; line-height: 1;
+}
+.qi-remove:hover { background: rgba(239,68,68,.15); color: var(--red); }
+.qi-remove:disabled { opacity: .3; cursor: not-allowed; }
+
+.queue-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--panel2);
+  display: flex; align-items: center; gap: 8px;
+}
+.queue-progress-label {
+  flex: 1; font-size: 11px; color: var(--txt3);
+  font-family: 'JetBrains Mono', monospace;
+}
 </style>
 </head>
 <body>
@@ -1019,6 +1124,7 @@ td.td-file { max-width: 300px; }
           Décochez les pistes à <strong style="color:var(--red)">supprimer</strong>. Sans réencodage.
         </div>
         <button class="btn btn-default" id="audioCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
+        <button class="btn btn-default" id="queueAudioBtn" onclick="addToQueue('streams')" style="height:38px;border-color:var(--accent);color:var(--accent)">+ File</button>
         <button class="btn btn-primary" id="applyAudioBtn" onclick="applyAllEdits()" style="height:38px">✂ Appliquer</button>
       </div>
     </div>
@@ -1048,6 +1154,7 @@ td.td-file { max-width: 300px; }
           Décochez les pistes à <strong style="color:var(--red)">supprimer</strong>. Tout supprimer est autorisé. Sans réencodage.
         </div>
         <button class="btn btn-default" id="subtitleCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
+        <button class="btn btn-default" id="queueSubBtn" onclick="addToQueue('streams')" style="height:38px;border-color:var(--accent);color:var(--accent)">+ File</button>
         <button class="btn btn-primary" id="applySubBtn" onclick="applyAllEdits()" style="height:38px">✂ Appliquer</button>
       </div>
     </div>
@@ -1194,10 +1301,34 @@ td.td-file { max-width: 300px; }
           L'original sera remplacé par le fichier transcodé.
         </div>
         <button class="btn btn-default" id="tcCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
+        <button class="btn btn-default" id="queueTcBtn" onclick="addToQueue('transcode')" style="height:38px;border-color:var(--accent);color:var(--accent)">+ File</button>
         <button class="btn btn-primary" id="applyTcBtn" onclick="applyTranscode()" style="height:38px">⚙ Transcoder</button>
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ── FILE D'ATTENTE DE TÂCHES ── -->
+<div id="queuePanel" class="queue-panel queue-panel--empty">
+  <div class="queue-header" onclick="toggleQueuePanel()">
+    <span class="queue-title">File d'attente</span>
+    <span class="queue-badge" id="queueBadge">0</span>
+    <span class="queue-toggle-icon" id="queueToggleIcon">▲</span>
+  </div>
+  <div class="queue-body" id="queueBody">
+    <div class="queue-empty" id="queueEmpty">
+      <span style="font-size:22px;opacity:.3">📋</span>
+      <span style="font-size:12px;color:var(--txt3)">Aucune tâche en attente</span>
+    </div>
+    <div id="queueList"></div>
+    <div class="queue-footer" id="queueFooter" style="display:none">
+      <span class="queue-progress-label" id="queueProgressLabel"></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm btn-default" id="clearDoneBtn" onclick="clearDoneTasks()" style="display:none;font-size:11px;height:30px;padding:0 10px">Nettoyer</button>
+        <button class="btn btn-sm btn-primary" id="executeQueueBtn" onclick="executeQueue()" style="font-size:11px;height:30px;padding:0 12px">▶ Exécuter les tâches</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1759,6 +1890,10 @@ let currentTab = 'audio';
 let activeJobId = null;
 let activeSSE    = null;
 
+// ── File d'attente ──────────────────────────────────────
+let taskQueue    = [];
+let queueRunning = false;
+
 // ── Ouvrir / fermer ──────────────────────────────────────
 function openEditor(fileObj) {
   editorFile = fileObj;
@@ -1782,6 +1917,9 @@ function openEditor(fileObj) {
   document.getElementById('applySubBtn').textContent = '✂ Appliquer';
   document.getElementById('applyTcBtn').disabled = false;
   document.getElementById('applyTcBtn').innerHTML = '⚙ Transcoder';
+  ['queueAudioBtn','queueSubBtn','queueTcBtn'].forEach(id => {
+    const b = document.getElementById(id); if (b) b.disabled = false;
+  });
   resetModalCloseBtns();
 
   switchTab('audio');
@@ -1832,6 +1970,9 @@ function setModalCloseBtnsRunning() {
     b.textContent = '⏹ Annuler le traitement';
     b.onclick = cancelActiveJob;
   });
+  ['queueAudioBtn','queueSubBtn','queueTcBtn'].forEach(id => {
+    const b = document.getElementById(id); if (b) b.disabled = true;
+  });
 }
 
 function setModalCloseBtnsDone() {
@@ -1839,6 +1980,9 @@ function setModalCloseBtnsDone() {
     const b = document.getElementById(id);
     b.textContent = 'Fermer';
     b.onclick = closeEditor;
+  });
+  ['queueAudioBtn','queueSubBtn','queueTcBtn'].forEach(id => {
+    const b = document.getElementById(id); if (b) b.disabled = false;
   });
 }
 
@@ -2360,6 +2504,290 @@ function appendLog(boxId, line) {
   if (!box) return;
   box.textContent += line + '\n';
   box.scrollTop = box.scrollHeight;
+}
+
+// ── FILE D'ATTENTE ─────────────────────────────────────────
+
+function addToQueue(type) {
+  if (!editorFile) return;
+  let params, label;
+
+  if (type === 'streams') {
+    const audioStreams = editorFile.audio_streams || [];
+    const subStreams   = editorFile.subtitle_streams || [];
+    const audioDel = audioStreams.length - editorKeep.size;
+    const subDel   = subStreams.length   - editorSubKeep.size;
+
+    if (audioDel === 0 && subDel === 0) {
+      toast('Aucune modification à mettre en file');
+      return;
+    }
+    params = {
+      path:          editorFile.path,
+      keep_audio:    [...editorKeep],
+      keep_subtitle: [...editorSubKeep],
+    };
+    const parts = [];
+    if (audioDel > 0) parts.push(audioDel + ' piste(s) audio supprimée(s)');
+    if (subDel   > 0) parts.push(subDel   + ' sous-titre(s) supprimé(s)');
+    label = parts.join(' · ');
+
+  } else { // 'transcode'
+    const codec     = document.querySelector('input[name=tcCodec]:checked')?.value   || 'hevc';
+    const encoder   = document.querySelector('input[name=tcEncoder]:checked')?.value || 'cpu';
+    const crf       = parseInt(document.getElementById('tcCrf').value);
+    const preset    = document.getElementById('tcPreset').value;
+    const audio     = document.getElementById('tcAudio').value;
+    const overwrite = document.querySelector('input[name=tcOutput]:checked')?.value === 'overwrite';
+    params = { path: editorFile.path, codec, encoder, crf, preset, audio, overwrite };
+    const codecLabel = codec === 'hevc' ? 'HEVC' : 'AV1';
+    const encLabel   = encoder === 'gpu' ? ' NVENC' : ' CPU';
+    label = 'Transcode → ' + codecLabel + encLabel + ' CRF' + crf;
+  }
+
+  // Doublon : même fichier + même type déjà en pending → mise à jour
+  const dup = taskQueue.find(t =>
+    t.file.path === editorFile.path && t.type === type && t.status === 'pending'
+  );
+  if (dup) {
+    dup.params = params;
+    dup.label  = label;
+    renderQueue();
+    toast('✓ Tâche mise à jour dans la file');
+    return;
+  }
+
+  taskQueue.push({
+    id:     crypto.randomUUID(),
+    file:   editorFile,
+    type,
+    params,
+    label,
+    status: 'pending',
+    error:  null,
+  });
+  renderQueue();
+  toast('✓ Ajouté à la file d\'attente');
+}
+
+function removeFromQueue(taskId) {
+  const idx = taskQueue.findIndex(t => t.id === taskId);
+  if (idx === -1) return;
+  if (taskQueue[idx].status === 'running') return;
+  taskQueue.splice(idx, 1);
+  renderQueue();
+}
+
+function clearDoneTasks() {
+  taskQueue = taskQueue.filter(t => t.status === 'pending' || t.status === 'running');
+  renderQueue();
+}
+
+function toggleQueuePanel() {
+  document.getElementById('queuePanel').classList.toggle('queue-collapsed');
+}
+
+function renderQueue() {
+  const panel    = document.getElementById('queuePanel');
+  const list     = document.getElementById('queueList');
+  const empty    = document.getElementById('queueEmpty');
+  const footer   = document.getElementById('queueFooter');
+  const badge    = document.getElementById('queueBadge');
+  const execBtn  = document.getElementById('executeQueueBtn');
+  const clearBtn = document.getElementById('clearDoneBtn');
+  const progLbl  = document.getElementById('queueProgressLabel');
+  const toastEl  = document.getElementById('toast');
+
+  if (taskQueue.length === 0) {
+    panel.classList.add('queue-panel--empty');
+    toastEl.style.bottom = '22px';
+    return;
+  }
+  panel.classList.remove('queue-panel--empty');
+
+  const pendingCount = taskQueue.filter(t => t.status === 'pending').length;
+  const runningCount = taskQueue.filter(t => t.status === 'running').length;
+  const errorCount   = taskQueue.filter(t => t.status === 'error').length;
+  const doneCount    = taskQueue.filter(t => t.status === 'done').length;
+
+  badge.textContent = taskQueue.length;
+  badge.className   = 'queue-badge';
+  if (runningCount > 0)      badge.classList.add('badge-running');
+  else if (errorCount > 0)   badge.classList.add('badge-error');
+  else if (pendingCount === 0) badge.classList.add('badge-done');
+
+  empty.style.display  = 'none';
+  footer.style.display = '';
+
+  if (queueRunning) {
+    progLbl.textContent = (doneCount + errorCount) + '/' + taskQueue.length + ' tâches';
+  } else {
+    progLbl.textContent = taskQueue.length + ' tâche(s) en attente';
+  }
+
+  execBtn.disabled    = queueRunning || pendingCount === 0;
+  execBtn.textContent = queueRunning ? '⏳ En cours…' : '▶ Exécuter les tâches';
+  clearBtn.style.display = (doneCount + errorCount > 0 && !queueRunning) ? '' : 'none';
+
+  // Décaler le toast pour éviter l'overlap
+  requestAnimationFrame(() => {
+    toastEl.style.bottom = (22 + panel.offsetHeight + 8) + 'px';
+  });
+
+  // Render items
+  list.innerHTML = '';
+  taskQueue.forEach(task => {
+    const item = document.createElement('div');
+    item.className = 'queue-item';
+    const errHtml = task.error
+      ? '<div class="qi-err">✕ ' + esc(task.error) + '</div>'
+      : '';
+    const removeDisabled = task.status === 'running' ? ' disabled' : '';
+    item.innerHTML =
+      '<div class="qi-dot qs-' + task.status + '"></div>' +
+      '<div class="qi-info">' +
+        '<div class="qi-name" title="' + esc(task.file.path) + '">' + esc(task.file.name) + '</div>' +
+        '<div class="qi-label">' + esc(task.label) + '</div>' +
+        errHtml +
+      '</div>' +
+      '<button class="qi-remove" onclick="removeFromQueue(\'' + task.id + '\')"' + removeDisabled + ' title="Retirer">✕</button>';
+    list.appendChild(item);
+  });
+}
+
+async function executeQueue() {
+  if (queueRunning) return;
+  if (activeJobId) {
+    toast('Un traitement est déjà en cours dans l\'éditeur');
+    return;
+  }
+  const pending = taskQueue.filter(t => t.status === 'pending');
+  if (pending.length === 0) return;
+
+  queueRunning = true;
+  renderQueue();
+  document.getElementById('queuePanel').classList.remove('queue-collapsed');
+  await executeNextTask();
+}
+
+async function executeNextTask() {
+  const task = taskQueue.find(t => t.status === 'pending');
+  if (!task) {
+    queueRunning = false;
+    const errorCount = taskQueue.filter(t => t.status === 'error').length;
+    const doneCount  = taskQueue.filter(t => t.status === 'done').length;
+    renderQueue();
+    toast(errorCount > 0
+      ? 'File terminée : ' + doneCount + ' ✓  ' + errorCount + ' ✕'
+      : '✓ ' + doneCount + ' tâche(s) traitée(s)');
+    return;
+  }
+
+  task.status = 'running';
+  renderQueue();
+
+  try {
+    if (task.type === 'streams') {
+      await runStreamsTask(task);
+    } else {
+      await runTranscodeTask(task);
+    }
+  } catch (e) {
+    task.status = 'error';
+    task.error  = e.message || 'Erreur inconnue';
+    renderQueue();
+  }
+
+  await executeNextTask();
+}
+
+function runStreamsTask(task) {
+  return new Promise(async (resolve, reject) => {
+    let r;
+    try {
+      r = await fetch('/api/edit/streams', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(task.params)
+      });
+    } catch(e) { return reject(new Error('Erreur réseau : ' + e.message)); }
+
+    const d = await r.json();
+    if (!d.job_id) return reject(new Error(d.error || 'Erreur démarrage'));
+
+    const sse = new EventSource('/api/job/' + d.job_id + '/stream');
+    const baseLabel = task.label.replace(/ \d+%$/, '');
+
+    sse.onmessage = e => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'log') {
+        task.label = baseLabel + ' ' + msg.progress + '%';
+        renderQueue();
+      } else if (msg.type === 'done') {
+        sse.close();
+        task.status = 'done';
+        task.label  = baseLabel;
+        if (msg.result && msg.result.file) {
+          const idx = files.findIndex(f => f.path === task.file.path);
+          if (idx !== -1) files[idx] = msg.result.file;
+        }
+        applyFilters();
+        renderQueue();
+        resolve();
+      } else if (msg.type === 'error') {
+        sse.close();
+        reject(new Error(msg.error || 'Erreur ffmpeg'));
+      }
+    };
+    sse.onerror = () => { sse.close(); reject(new Error('Connexion SSE perdue')); };
+  });
+}
+
+function runTranscodeTask(task) {
+  return new Promise(async (resolve, reject) => {
+    let r;
+    try {
+      r = await fetch('/api/transcode', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(task.params)
+      });
+    } catch(e) { return reject(new Error('Erreur réseau : ' + e.message)); }
+
+    const d = await r.json();
+    if (!d.job_id) return reject(new Error(d.error || 'Erreur démarrage'));
+
+    const sse = new EventSource('/api/job/' + d.job_id + '/stream');
+    const baseLabel = task.label.replace(/ \d+%$/, '');
+
+    sse.onmessage = e => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'log') {
+        task.label = baseLabel + ' ' + msg.progress + '%';
+        renderQueue();
+      } else if (msg.type === 'done') {
+        sse.close();
+        task.status = 'done';
+        task.label  = baseLabel;
+        const res = msg.result;
+        if (res && res.file) {
+          if (task.params.overwrite) {
+            const idx = files.findIndex(f => f.path === task.file.path);
+            if (idx !== -1) files[idx] = res.file; else files.push(res.file);
+          } else {
+            files.push(res.file);
+          }
+        }
+        applyFilters();
+        renderQueue();
+        resolve();
+      } else if (msg.type === 'error') {
+        sse.close();
+        reject(new Error(msg.error || 'Erreur ffmpeg'));
+      }
+    };
+    sse.onerror = () => { sse.close(); reject(new Error('Connexion SSE perdue')); };
+  });
 }
 
 </script>
