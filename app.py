@@ -188,6 +188,13 @@ def run_scan_job(job_id, files):
         }
         scan_jobs[job_id]['done'] = True
 
+    # Fix #2 — nettoyer le job de la mémoire après 60 s (#2)
+    def _cleanup_scan():
+        time.sleep(60)
+        with scan_jobs_lock:
+            scan_jobs.pop(job_id, None)
+    threading.Thread(target=_cleanup_scan, daemon=True).start()
+
 # ── JOB RUNNER (thread) ───────────────────────────────────
 
 def run_ffmpeg_job(job_id, cmd, src, tmp, size_before, duration_sec):
@@ -278,7 +285,8 @@ def api_browse():
 
 @app.route('/api/scan', methods=['POST'])
 def api_scan():
-    data      = request.get_json()
+    data = request.get_json(silent=True)
+    if not data: return jsonify({'error': 'JSON invalide'}), 400
     directory = data.get('path', '').strip()
     if not directory:
         return jsonify({'error': 'Chemin requis'}), 400
@@ -340,7 +348,8 @@ def api_scan_cancel(job_id):
 
 @app.route('/api/probe', methods=['POST'])
 def api_probe():
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not data: return jsonify({'error': 'JSON invalide'}), 400
     filepath = data.get('path', '').strip()
     if not filepath: return jsonify({'error': 'path requis'}), 400
     info = probe_file(filepath)
@@ -351,9 +360,13 @@ def api_probe():
 
 @app.route('/api/edit/audio', methods=['POST'])
 def api_edit_audio():
-    data         = request.get_json()
+    data = request.get_json(silent=True)
+    if not data: return jsonify({'error': 'JSON invalide'}), 400
     filepath     = data.get('path', '').strip()
-    keep_indices = data.get('keep_indices', [])
+    try:
+        keep_indices = [int(i) for i in data.get('keep_indices', [])]
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Indices invalides'}), 400
 
     if not filepath:     return jsonify({'error': 'path requis'}), 400
     if not keep_indices: return jsonify({'error': 'Impossible de supprimer toutes les pistes audio'}), 400
@@ -361,7 +374,8 @@ def api_edit_audio():
     src = Path(filepath)
     if not src.exists(): return jsonify({'error': 'Fichier introuvable'}), 404
 
-    tmp      = src.with_name(src.stem + '.__tmp__' + src.suffix)
+    job_id   = str(uuid.uuid4())
+    tmp      = src.with_name(src.stem + f'.__tmp_{job_id}__' + src.suffix)
     size_bef = src.stat().st_size
     info     = probe_file(src)
     dur_sec  = info['duration_raw'] if info else 0
@@ -371,7 +385,6 @@ def api_edit_audio():
         cmd += ['-map', f'0:{idx}']
     cmd += ['-map', '0:s?', '-c', 'copy', '-map_metadata', '0', str(tmp)]
 
-    job_id = str(uuid.uuid4())
     with jobs_lock:
         jobs[job_id] = {'lines': [], 'done': False, 'progress': 0, 'error': None, 'result': None}
 
@@ -386,18 +399,23 @@ def api_edit_audio():
 @app.route('/api/edit/streams', methods=['POST'])
 def api_edit_streams():
     """Supprime des pistes audio et/ou sous-titres en une seule passe ffmpeg."""
-    data          = request.get_json()
-    filepath      = data.get('path', '').strip()
-    keep_audio    = data.get('keep_audio', [])
-    keep_subtitle = data.get('keep_subtitle', [])
+    data = request.get_json(silent=True)
+    if not data: return jsonify({'error': 'JSON invalide'}), 400
+    filepath = data.get('path', '').strip()
+    try:
+        keep_audio    = [int(i) for i in data.get('keep_audio', [])]
+        keep_subtitle = [int(i) for i in data.get('keep_subtitle', [])]
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Indices invalides'}), 400
 
-    if not filepath:  return jsonify({'error': 'path requis'}), 400
+    if not filepath:   return jsonify({'error': 'path requis'}), 400
     if not keep_audio: return jsonify({'error': 'Impossible de supprimer toutes les pistes audio'}), 400
 
     src = Path(filepath)
     if not src.exists(): return jsonify({'error': 'Fichier introuvable'}), 404
 
-    tmp      = src.with_name(src.stem + '.__tmp__' + src.suffix)
+    job_id   = str(uuid.uuid4())
+    tmp      = src.with_name(src.stem + f'.__tmp_{job_id}__' + src.suffix)
     size_bef = src.stat().st_size
     info     = probe_file(src)
     dur_sec  = info['duration_raw'] if info else 0
@@ -409,7 +427,6 @@ def api_edit_streams():
         cmd += ['-map', f'0:{idx}']
     cmd += ['-c', 'copy', '-map_metadata', '0', str(tmp)]
 
-    job_id = str(uuid.uuid4())
     with jobs_lock:
         jobs[job_id] = {'lines': [], 'done': False, 'progress': 0, 'error': None, 'result': None}
 
@@ -507,11 +524,19 @@ def api_transcode():
       preset:  slow | medium | fast | ultrafast
       audio:   copy | aac
     """
-    data      = request.get_json()
+    data = request.get_json(silent=True)
+    if not data: return jsonify({'error': 'JSON invalide'}), 400
     filepath  = data.get('path', '').strip()
     codec     = data.get('codec', 'hevc')
     encoder   = data.get('encoder', 'cpu')   # cpu | gpu
-    crf       = int(data.get('crf', 22))
+    try:
+        crf = int(data.get('crf', 22))
+    except (ValueError, TypeError):
+        return jsonify({'error': 'CRF invalide'}), 400
+    CRF_LIMITS = {'hevc': (1, 51), 'av1': (1, 63)}
+    lo, hi = CRF_LIMITS.get(codec, (1, 63))
+    if not (lo <= crf <= hi):
+        return jsonify({'error': f'CRF hors limites ({lo}-{hi})'}), 400
     preset    = data.get('preset', 'medium')
     audio     = data.get('audio', 'copy')
     overwrite = bool(data.get('overwrite', True))
@@ -520,9 +545,11 @@ def api_transcode():
     src = Path(filepath)
     if not src.exists(): return jsonify({'error': 'Fichier introuvable'}), 404
 
+    job_id = str(uuid.uuid4())
+
     # Nom du fichier de sortie
     if overwrite:
-        out         = src.with_name(src.stem + '.__tc_tmp__' + src.suffix)
+        out         = src.with_name(src.stem + f'.__tc_tmp_{job_id}__' + src.suffix)
         replace_src = src   # renommé vers src après succès
     else:
         tag = ('hevc' if codec == 'hevc' else 'av1') + ('.nvenc' if encoder == 'gpu' else '')
@@ -620,7 +647,6 @@ def api_transcode():
            + map_args
            + ['-map_metadata', '0', str(out)])
 
-    job_id = str(uuid.uuid4())
     with jobs_lock:
         jobs[job_id] = {'lines':[], 'done':False, 'progress':0, 'error':None, 'result':None}
 

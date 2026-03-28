@@ -2341,6 +2341,11 @@ function updateTcEstimate() {
   // Bitrate "dense" = rapport bitrate/pixel par frame
   // 1080p référence bien encodé H.264 ≈ 5 Mb/s
   // Plus le bitrate source est bas, moins on peut gagner (déjà compressé)
+  if (!editorFile.width || !height || editorFile.width === 0 || height === 0) {
+    document.getElementById('estSize').textContent    = 'N/A';
+    document.getElementById('estSaving').textContent  = 'Métadonnées vidéo manquantes';
+    return;
+  }
   const bitsPerPixel = bitrateRaw / (editorFile.width * height * 25);
 
   // Ratio de base HEVC : entre 0.40 (source gonflé) et 0.65 (source dense)
