@@ -390,12 +390,20 @@ td.td-file { max-width: 300px; }
   font-size: 12px; font-weight: 500;
 }
 .pill-good { background: var(--green-bg); color: var(--green); }
-.pill-bad  { background: var(--red-bg);   color: var(--red); }
+.pill-warn { background: rgba(245,158,11,.12); color: #f59e0b; }
+.pill-med  { background: rgba(249,115,22,.12); color: #f97316; }
+.pill-high { background: var(--red-bg);        color: var(--red); }
 
-.pill-dot { width: 6px; height: 6px; border-radius: 50%; }
+.pill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .pill-good .pill-dot { background: var(--green); }
-.pill-bad  .pill-dot { background: var(--red); animation: pulse .8s ease infinite alternate; }
+.pill-warn .pill-dot { background: #f59e0b; animation: pulse .8s ease infinite alternate; }
+.pill-med  .pill-dot { background: #f97316; animation: pulse .8s ease infinite alternate; }
+.pill-high .pill-dot { background: var(--red);   animation: pulse .8s ease infinite alternate; }
 @keyframes pulse { from{opacity:.4} to{opacity:1} }
+
+.pill-header { display: flex; align-items: center; gap: 6px; }
+.pill-gain   { font-size: 10px; opacity: .7; padding-left: 12px; margin-top: 2px; }
+.status-pill.has-gain { flex-direction: column; align-items: flex-start; padding: 5px 11px; }
 
 .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
@@ -1812,6 +1820,41 @@ function applyFilters() {
     `</div>`;
   };
 
+  const statusCell = f => {
+    if (f.optimized) {
+      return `<span class="status-pill pill-good">
+        <span class="pill-dot"></span>Optimisé
+      </span>`;
+    }
+    // Estimer la réduction de taille après transcodage HEVC
+    const codec = (f.codec || '').toUpperCase();
+    let ratio; // fraction de la taille conservée après HEVC
+    if      (codec === 'H264' || codec === 'AVC')           ratio = 0.55; // -45%
+    else if (codec === 'MPEG2VIDEO' || codec === 'MPEG2')   ratio = 0.35; // -65%
+    else if (codec === 'MPEG4' || codec === 'XVID' || codec === 'DIVX') ratio = 0.40; // -60%
+    else if (codec === 'VP9')  ratio = 0.80; // -20%
+    else if (codec === 'VP8')  ratio = 0.65; // -35%
+    else if (codec === 'WMV3' || codec === 'VC1') ratio = 0.50; // -50%
+    else                       ratio = 0.55; // -45% par défaut
+
+    const gainPct  = Math.round((1 - ratio) * 100);
+    const gainBytes = (f.size_raw || 0) * (1 - ratio);
+    const gainFmt  = gainBytes >= 1e9
+      ? (gainBytes / 1e9).toFixed(1) + ' GB'
+      : (gainBytes / 1e6).toFixed(0) + ' MB';
+
+    let pillClass, label;
+    if      (gainPct >= 50) { pillClass = 'pill-high'; label = 'Optimisation majeure'; }
+    else if (gainPct >= 25) { pillClass = 'pill-med';  label = 'Peut être optimisé';   }
+    else                    { pillClass = 'pill-warn'; label = 'Gain modéré';           }
+
+    const gainStr = gainBytes > 0 ? `−${gainFmt} · −${gainPct}%` : `−${gainPct}%`;
+    return `<span class="status-pill ${pillClass} has-gain">
+      <span class="pill-header"><span class="pill-dot"></span>${label}</span>
+      <span class="pill-gain">${gainStr}</span>
+    </span>`;
+  };
+
   // Construire les lignes avec createElement pour éviter les problèmes
   // d'échappement avec les noms de fichiers dans les onclick inline
   tbody.innerHTML = '';
@@ -1832,12 +1875,7 @@ function applyFilters() {
       <td class="mono" style="color:var(--txt3)">${esc(f.duration)}</td>
       <td>${audioCell(f.audio_codec)}</td>
       <td>${subCell(f.subtitle_streams)}</td>
-      <td>
-        <span class="status-pill ${f.optimized ? 'pill-good' : 'pill-bad'}">
-          <span class="pill-dot"></span>
-          ${f.optimized ? 'Optimisé' : 'À transcoder'}
-        </span>
-      </td>
+      <td>${statusCell(f)}</td>
       <td></td>
     `;
     // Bouton éditer via addEventListener — aucun JSON dans le HTML
@@ -1992,24 +2030,36 @@ function quickScan() {
   field.addEventListener('drop', e => {
     e.preventDefault();
     field.classList.remove('drag-over');
-    // text/uri-list : envoyé par les gestionnaires de fichiers Linux (file:///path)
-    const uriList = e.dataTransfer.getData('text/uri-list');
-    if (uriList) {
-      const uri = uriList.split('\n').map(s => s.trim()).find(s => s.startsWith('file://'));
-      if (uri) {
-        document.getElementById('pathInput').value = decodeURIComponent(uri.replace('file://', ''));
-        toast('📁 Dossier défini');
-        return;
-      }
+    // Extraire un chemin absolu depuis une URI file:// ou un chemin brut
+    function extractPath(raw) {
+      if (!raw) return null;
+      const line = raw.split('\n').map(s => s.trim()).find(s => s.startsWith('file://') || s.startsWith('/'));
+      if (!line) return null;
+      if (line.startsWith('file://')) return decodeURIComponent(line.replace('file://', ''));
+      return line;
     }
-    // Fallback Electron / Chromium : File.path
+    // 1. text/uri-list : envoyé par les gestionnaires de fichiers Linux (Firefox)
+    const path1 = extractPath(e.dataTransfer.getData('text/uri-list'));
+    if (path1) {
+      document.getElementById('pathInput').value = path1;
+      toast('📁 Dossier défini');
+      return;
+    }
+    // 2. text/plain : fallback, certains gestionnaires envoient le chemin ici
+    const path2 = extractPath(e.dataTransfer.getData('text/plain'));
+    if (path2) {
+      document.getElementById('pathInput').value = path2;
+      toast('📁 Dossier défini');
+      return;
+    }
+    // 3. Electron : File.path
     const f = e.dataTransfer.files[0];
     if (f && f.path) {
       document.getElementById('pathInput').value = f.path;
       toast('📁 Dossier défini');
       return;
     }
-    toast('Impossible de lire le chemin — tapez-le manuellement');
+    toast('⚠️ Les navigateurs Chromium (Brave, Chrome, Edge) bloquent le chemin des fichiers glissés. Utilisez Firefox ou saisissez le chemin manuellement.');
   });
 })();
 
