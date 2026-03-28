@@ -10,7 +10,7 @@ from pathlib import Path
 
 app = Flask(__name__)
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0-beta"
 
 SUPPORTED_EXTENSIONS = {'.mkv', '.mp4', '.avi', '.mov', '.m4v', '.webm'}
 
