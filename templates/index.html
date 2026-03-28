@@ -193,6 +193,22 @@ input[type=text]::placeholder { color: var(--txt3); }
 }
 .btn-primary:active { transform: none; }
 
+/* Bouton Analyser — mise en avant */
+#scanBtn {
+  height: 48px; padding: 0 26px;
+  font-size: 14px; font-weight: 600;
+  background: linear-gradient(135deg, #6c8fff 0%, #4f6ee8 100%);
+  box-shadow: 0 0 14px rgba(108,143,255,.45), 0 2px 6px rgba(0,0,0,.3);
+  letter-spacing: .3px;
+}
+#scanBtn:hover {
+  background: linear-gradient(135deg, #7d9dff 0%, #5a7ef0 100%);
+  box-shadow: 0 0 22px rgba(108,143,255,.65), 0 4px 14px rgba(0,0,0,.3);
+  transform: translateY(-2px);
+}
+#scanBtn:active { transform: none; box-shadow: 0 0 10px rgba(108,143,255,.4); }
+#scanBtn:disabled { box-shadow: none; background: var(--accent); }
+
 .btn-default {
   background: var(--panel2);
   border: 1px solid var(--line2);
@@ -391,7 +407,12 @@ td.td-file { max-width: 300px; }
   cursor: pointer; white-space: nowrap;
   transition: all .15s;
 }
-.btn-edit:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+.btn-edit:hover {
+  border-color: var(--accent); color: var(--accent);
+  background: var(--accent-bg);
+  box-shadow: 0 0 8px rgba(108,143,255,.25);
+  transform: translateY(-1px);
+}
 
 /* Audio tracks */
 .audio-tracks { display: flex; flex-wrap: wrap; gap: 4px; max-width: 220px; }
@@ -939,7 +960,7 @@ td.td-file { max-width: 300px; }
             <span>🗂</span> Parcourir
           </button>
           <button class="btn btn-primary" id="scanBtn" onclick="startScan()">
-            <span>▶</span> Analyser
+            <span>🔍</span> Analyser
           </button>
           <button class="btn btn-subtle" id="clearBtn" onclick="clearAll()" style="display:none">
             ✕ Effacer
@@ -1588,7 +1609,7 @@ function cancelScan() {
 function finishScan() {
   const btn = document.getElementById('scanBtn');
   btn.disabled = false;
-  btn.innerHTML = '<span>▶</span> Analyser';
+  btn.innerHTML = '<span>🔍</span> Analyser';
   document.getElementById('progressArea').style.display  = 'none';
   document.getElementById('scanCancelBtn').style.display = 'none';
 }
@@ -1791,7 +1812,7 @@ function applyFilters() {
     const btn = document.createElement('button');
     btn.className = 'btn-edit';
     btn.title = 'Éditer les pistes audio';
-    btn.textContent = '✂ Éditer';
+    btn.textContent = '✏️ Éditer';
     btn.addEventListener('click', () => openEditor(f));
     tr.querySelector('td:last-child').appendChild(btn);
     tbody.appendChild(tr);
