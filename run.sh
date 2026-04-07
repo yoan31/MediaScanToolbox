@@ -36,4 +36,7 @@ echo "  → http://localhost:5000"
 echo "  Ctrl+C pour arrêter"
 echo ""
 
+# Ouvrir le navigateur après démarrage du serveur
+(sleep 1.5 && xdg-open http://localhost:5000 2>/dev/null || open http://localhost:5000 2>/dev/null) &
+
 venv/bin/python app.py

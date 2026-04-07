@@ -889,6 +889,30 @@ td.td-file { max-width: 300px; }
   color: inherit; cursor: pointer; padding: 0 2px; line-height: 1;
 }
 .recent-chip-del:hover { opacity: 1; color: var(--red) !important; }
+
+/* ─── FAVORIS SIDEBAR ────────────────────────────────────── */
+.fav-item {
+  margin: 1px 8px; padding: 7px 12px;
+  border-radius: 7px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--txt2);
+  cursor: pointer; transition: all .15s;
+  user-select: none;
+}
+.fav-item:hover { background: var(--panel2); color: var(--txt); }
+.fav-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.fav-item-del {
+  font-size: 10px; opacity: 0; flex-shrink: 0;
+  border: none; background: none; color: var(--txt3);
+  cursor: pointer; padding: 0 2px; line-height: 1;
+  transition: opacity .12s, color .12s;
+}
+.fav-item:hover .fav-item-del { opacity: 1; }
+.fav-item-del:hover { opacity: 1 !important; color: var(--red) !important; }
+
+/* Bouton favoris (étoile) */
+#favBtn { padding: 0 14px; font-size: 16px; transition: color .15s, background .15s; }
+#favBtn.is-fav { color: var(--amber); }
 </style>
 </head>
 <body>
@@ -967,6 +991,9 @@ td.td-file { max-width: 300px; }
     </div>
   </div>
 
+  <div class="sidebar-section" id="favSection" style="margin-top:4px;display:none">Favoris</div>
+  <div id="sidebarFavs" style="padding:0 0 4px;overflow-y:auto;flex-shrink:0"></div>
+
   <div class="sidebar-footer" id="clock"></div>
 </aside>
 
@@ -994,6 +1021,7 @@ td.td-file { max-width: 300px; }
           <button class="btn btn-default" onclick="openBrowser()">
             <span>🗂</span> Parcourir
           </button>
+          <button class="btn btn-default" id="favBtn" onclick="toggleFav()" title="Ajouter aux favoris">☆</button>
           <button class="btn btn-primary" id="scanBtn" onclick="startScan()">
             <span>🔍</span> Analyser
           </button>
@@ -1530,6 +1558,7 @@ function buildBreadcrumb(fullPath, el) {
 function confirmPath() {
   if (!browseAt) return;
   document.getElementById('pathInput').value = browseAt;
+  updateFavBtn();
   closeModal();
   toast('Dossier sélectionné');
 }
@@ -1945,6 +1974,7 @@ function scrollToResults() {
 document.getElementById('pathInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') startScan();
 });
+document.getElementById('pathInput').addEventListener('input', updateFavBtn);
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeModal(); closeEditor(); }
 });
@@ -1990,10 +2020,85 @@ function renderHistory() {
       '<button class="recent-chip-del" onclick="event.stopPropagation();removeFromHistory(\'' + safeDir + '\')" title="Retirer">✕</button>';
     chip.addEventListener('click', () => {
       document.getElementById('pathInput').value = dir;
+      updateFavBtn();
     });
     container.appendChild(chip);
   });
   updateQuickScanBtn();
+}
+
+// ── FAVORIS ───────────────────────────────────────────────
+const FAVS_KEY = 'mst_favorites';
+
+function getFavs() {
+  try { return JSON.parse(localStorage.getItem(FAVS_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function isFav(path) { return getFavs().includes(path); }
+
+function toggleFav() {
+  const path = document.getElementById('pathInput').value.trim();
+  if (!path) return;
+  let favs = getFavs();
+  if (favs.includes(path)) {
+    favs = favs.filter(f => f !== path);
+  } else {
+    favs.unshift(path);
+  }
+  localStorage.setItem(FAVS_KEY, JSON.stringify(favs));
+  renderFavs();
+  updateFavBtn();
+}
+
+function removeFav(path) {
+  const favs = getFavs().filter(f => f !== path);
+  localStorage.setItem(FAVS_KEY, JSON.stringify(favs));
+  renderFavs();
+  updateFavBtn();
+}
+
+function updateFavBtn() {
+  const path = document.getElementById('pathInput').value.trim();
+  const btn  = document.getElementById('favBtn');
+  if (isFav(path)) {
+    btn.textContent = '★';
+    btn.title = 'Retirer des favoris';
+    btn.classList.add('is-fav');
+  } else {
+    btn.textContent = '☆';
+    btn.title = 'Ajouter aux favoris';
+    btn.classList.remove('is-fav');
+  }
+}
+
+function renderFavs() {
+  const favs = getFavs();
+  const section   = document.getElementById('favSection');
+  const container = document.getElementById('sidebarFavs');
+  if (!favs.length) {
+    section.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  section.style.display = '';
+  container.innerHTML = '';
+  favs.forEach(dir => {
+    const name    = dir.split('/').filter(Boolean).pop() || dir;
+    const safeDir = dir.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const item = document.createElement('div');
+    item.className = 'fav-item';
+    item.title = dir;
+    item.innerHTML =
+      '<span style="font-size:13px;flex-shrink:0;color:var(--amber)">★</span>' +
+      '<span class="fav-item-name">' + esc(name) + '</span>' +
+      '<button class="fav-item-del" onclick="event.stopPropagation();removeFav(\'' + safeDir + '\')" title="Retirer">✕</button>';
+    item.addEventListener('click', () => {
+      document.getElementById('pathInput').value = dir;
+      updateFavBtn();
+    });
+    container.appendChild(item);
+  });
 }
 
 // ── SCAN RAPIDE ───────────────────────────────────────────
@@ -2042,6 +2147,7 @@ function quickScan() {
     const path1 = extractPath(e.dataTransfer.getData('text/uri-list'));
     if (path1) {
       document.getElementById('pathInput').value = path1;
+      updateFavBtn();
       toast('📁 Dossier défini');
       return;
     }
@@ -2049,6 +2155,7 @@ function quickScan() {
     const path2 = extractPath(e.dataTransfer.getData('text/plain'));
     if (path2) {
       document.getElementById('pathInput').value = path2;
+      updateFavBtn();
       toast('📁 Dossier défini');
       return;
     }
@@ -2056,6 +2163,7 @@ function quickScan() {
     const f = e.dataTransfer.files[0];
     if (f && f.path) {
       document.getElementById('pathInput').value = f.path;
+      updateFavBtn();
       toast('📁 Dossier défini');
       return;
     }
@@ -2065,6 +2173,8 @@ function quickScan() {
 
 // ── INIT ─────────────────────────────────────────────────
 renderHistory();
+renderFavs();
+updateFavBtn();
 
 // ── AUDIO EDITOR ─────────────────────────────────────────
 const LANG_FLAGS_EDIT = {

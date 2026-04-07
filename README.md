@@ -14,6 +14,7 @@ Pointez vers un dossier, et MediaScan Toolbox scannera récursivement tous les f
 - **Combiner les modifications** — les changements audio et sous-titres sont appliqués ensemble en une seule passe ffmpeg
 - **Suivre la progression** en temps réel via une barre de progression live (Server-Sent Events)
 - **Annuler** un job en cours à tout moment
+- **Gérer des favoris** — épingler des dossiers fréquents dans la sidebar, persistés en localStorage
 
 Chaque fichier scanné affiche son codec, sa résolution, son débit, sa taille, ses pistes audio et ses pistes de sous-titres avec leur langue et codec.
 
@@ -31,7 +32,7 @@ cd mediascan
 ./run.sh
 ```
 
-Puis ouvrez [http://localhost:5000](http://localhost:5000).
+Le navigateur s'ouvre automatiquement. Si ce n'est pas le cas, ouvrez [http://localhost:5000](http://localhost:5000).
 
 `run.sh` crée automatiquement un virtualenv Python et installe les dépendances au premier lancement.
 
@@ -82,6 +83,7 @@ From there you can:
 - **Combine edits** — audio and subtitle changes are applied together in a single ffmpeg pass
 - **Monitor progress** in real time via a live progress bar (Server-Sent Events)
 - **Cancel** a running job at any time
+- **Manage favourites** — pin frequently used folders in the sidebar, persisted in localStorage
 
 Each scanned file shows its codec, resolution, bitrate, file size, audio tracks and subtitle tracks with their language and codec.
 
@@ -99,7 +101,7 @@ cd mediascan
 ./run.sh
 ```
 
-Then open [http://localhost:5000](http://localhost:5000).
+The browser opens automatically. If it doesn't, navigate to [http://localhost:5000](http://localhost:5000).
 
 `run.sh` automatically creates a Python virtualenv and installs dependencies on first run.
 

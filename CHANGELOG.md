@@ -5,6 +5,21 @@ Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
 ---
 
+## [1.3.0] — 2026-04-07
+
+### Favoris
+
+- **Bouton ☆/★** à côté du champ de chemin — ajoute ou retire le dossier courant des favoris en un clic (étoile dorée = déjà favori)
+- **Section "Favoris" dans la sidebar** — liste des dossiers favoris, cliquables pour charger le chemin ; bouton ✕ au survol pour retirer un favori ; section masquée automatiquement si la liste est vide
+- **Persistance localStorage** — clé `mst_favorites`, indépendante de l'historique récent (`mst_recent_dirs`)
+- **Mise à jour automatique de l'étoile** — l'état du bouton se synchronise dans tous les cas : saisie clavier, browser de dossiers, chips récents, drag & drop
+
+### Lancement
+
+- **Ouverture automatique du navigateur** — `run.sh` ouvre `http://localhost:5000` dans le navigateur par défaut 1,5 s après le démarrage de Flask (`xdg-open` Linux / `open` macOS)
+
+---
+
 ## [1.1.0] — 2026-03-26
 
 ### Sous-titres
