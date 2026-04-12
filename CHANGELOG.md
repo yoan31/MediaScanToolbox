@@ -5,6 +5,24 @@ Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
 ---
 
+## [1.4.0] — 2026-04-13
+
+### UX — Modale d'édition
+
+- **Fenêtre élargie** — la modale "Éditer le fichier" passe de 700 px à 860 px de large (max-height 92 vh) et les listes de pistes gagnent 60 px de hauteur supplémentaire
+- **Bouton "Tout décocher"** dans l'onglet CC Sous-titres — apparaît dès qu'au moins une piste est cochée ; disparaît automatiquement quand tout est déjà décoché
+
+### Édition par lot
+
+- **Cases à cocher** sur chaque ligne du tableau de résultats (+ case "Tout sélectionner" dans l'en-tête avec état indéterminé)
+- **Barre de sélection** — s'affiche dès que ≥ 2 fichiers sont cochés ; affiche le compteur et un bouton "Éditer la sélection"
+- **Mode lot dans la modale** — quand plusieurs fichiers sont sélectionnés, la modale indique "Modifier N fichiers" et utilise le premier fichier comme gabarit de pistes
+- **Avertissement contextuel** — banderole dans les onglets Audio et Sous-titres rappelant que les mêmes indices de pistes seront appliqués à tous les fichiers sélectionnés
+- **Bouton "+ File ×N"** — remplace les boutons d'application directe en mode lot ; ajoute une tâche en file d'attente pour chacun des N fichiers sélectionnés (audio, sous-titres ou transcodage)
+- Conçu pour les séries où tous les épisodes partagent la même structure de pistes
+
+---
+
 ## [1.3.0] — 2026-04-07
 
 ### Favoris

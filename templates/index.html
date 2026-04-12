@@ -913,6 +913,28 @@ td.td-file { max-width: 300px; }
 /* Bouton favoris (étoile) */
 #favBtn { padding: 0 14px; font-size: 16px; transition: color .15s, background .15s; }
 #favBtn.is-fav { color: var(--amber); }
+
+/* ─── ROW SELECTION ─────────────────────────────────────── */
+th.col-check, td.col-check {
+  width: 38px; padding: 0 4px 0 14px;
+  cursor: default; text-align: center;
+}
+th.col-check { cursor: default; }
+th.col-check:hover { color: var(--txt3); }
+.row-cb { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
+tbody tr.row-selected { background: var(--accent-bg) !important; }
+tbody tr.row-selected:hover { background: rgba(108,143,255,.16) !important; }
+
+/* ─── BATCH TOOLBAR ─────────────────────────────────────── */
+.batch-bar {
+  display: none; align-items: center; gap: 10px;
+  background: var(--panel2); border: 1px solid var(--accent);
+  border-radius: 8px; padding: 9px 14px; margin-bottom: 8px;
+  animation: pop .15s;
+}
+.batch-bar.visible { display: flex; }
+.batch-bar-label { font-size: 13px; color: var(--txt2); flex: 1; }
+.batch-bar-label strong { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -1107,10 +1129,21 @@ td.td-file { max-width: 300px; }
           <button class="btn btn-default btn-sm" onclick="resetFilters()">Réinit.</button>
         </div>
 
+        <div class="batch-bar" id="batchBar">
+          <span class="batch-bar-label">
+            <strong id="batchCount">0</strong> fichiers sélectionnés
+          </span>
+          <button class="btn btn-default btn-sm" onclick="clearSelection()" style="color:var(--txt3);height:28px">Désélectionner</button>
+          <button class="btn btn-primary" style="height:28px;font-size:12px" onclick="openBatchEditor()">✏ Éditer la sélection</button>
+        </div>
+
         <div class="table-outer">
           <table>
             <thead>
               <tr>
+                <th class="col-check" onclick="event.stopPropagation()" style="cursor:default">
+                  <input type="checkbox" class="row-cb" id="selectAllCb" title="Tout sélectionner" onchange="toggleSelectAll(this.checked)">
+                </th>
                 <th onclick="sortBy('name')">Fichier <span class="si"></span></th>
                 <th onclick="sortBy('codec')">Codec <span class="si"></span></th>
                 <th onclick="sortBy('height')">Résolution <span class="si"></span></th>
@@ -1169,7 +1202,7 @@ td.td-file { max-width: 300px; }
 
 <!-- ── EDITOR MODAL (audio + transcode) ── -->
 <div class="overlay" id="editorOverlay" onclick="editorBgClick(event)">
-  <div class="modal" style="width:700px;max-height:88vh" onclick="event.stopPropagation()">
+  <div class="modal" style="width:860px;max-height:92vh" onclick="event.stopPropagation()">
 
     <div class="modal-head">
       <div>
@@ -1189,9 +1222,10 @@ td.td-file { max-width: 300px; }
     <!-- ── ONGLET AUDIO ── -->
     <div id="panel-audio">
       <div class="edit-warn" id="editWarn">⚠ Vous devez conserver au moins une piste audio.</div>
+      <div class="edit-warn" id="batchAudioWarn" style="display:none">📂 Mode lot : les mêmes indices seront appliqués à tous les fichiers sélectionnés.</div>
       <div class="edit-result" id="editResult"></div>
       <div class="editor-summary" id="editorSummary"></div>
-      <div class="dir-scroll" id="trackList" style="max-height:260px"></div>
+      <div class="dir-scroll" id="trackList" style="max-height:320px"></div>
 
       <!-- Progression audio -->
       <div id="audioProgress" style="display:none;padding:16px 20px">
@@ -1213,6 +1247,7 @@ td.td-file { max-width: 300px; }
         </div>
         <button class="btn btn-default" id="audioCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
         <button class="btn btn-default" id="queueAudioBtn" onclick="addToQueue('streams')" style="height:38px;border-color:var(--accent);color:var(--accent)">+ File</button>
+        <button class="btn btn-default" id="batchAudioBtn" onclick="addBatchToQueue('streams')" style="display:none;height:38px;border-color:var(--accent);color:var(--accent)">+ File ×<span id="batchAudioCount">0</span></button>
         <button class="btn btn-primary" id="applyAudioBtn" onclick="applyAllEdits()" style="height:38px">✂ Appliquer</button>
       </div>
     </div>
@@ -1220,8 +1255,12 @@ td.td-file { max-width: 300px; }
     <!-- ── ONGLET SOUS-TITRES ── -->
     <div id="panel-subtitle" style="display:none">
       <div class="edit-result" id="editSubResult"></div>
-      <div class="editor-summary" id="editorSubSummary"></div>
-      <div class="dir-scroll" id="subTrackList" style="max-height:260px"></div>
+      <div class="edit-warn" id="batchSubWarn" style="display:none">📂 Mode lot : les mêmes indices seront appliqués à tous les fichiers sélectionnés.</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 20px 0">
+        <div class="editor-summary" id="editorSubSummary" style="flex:1;margin:0;padding:0;border:none;background:none"></div>
+        <button id="uncheckAllSubBtn" class="btn btn-default btn-sm" style="height:26px;font-size:11px;flex-shrink:0;display:none" onclick="uncheckAllSubs()">Tout décocher</button>
+      </div>
+      <div class="dir-scroll" id="subTrackList" style="max-height:320px"></div>
 
       <!-- Progression sous-titres -->
       <div id="subProgress" style="display:none;padding:16px 20px">
@@ -1243,6 +1282,7 @@ td.td-file { max-width: 300px; }
         </div>
         <button class="btn btn-default" id="subtitleCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
         <button class="btn btn-default" id="queueSubBtn" onclick="addToQueue('streams')" style="height:38px;border-color:var(--accent);color:var(--accent)">+ File</button>
+        <button class="btn btn-default" id="batchSubBtn" onclick="addBatchToQueue('streams')" style="display:none;height:38px;border-color:var(--accent);color:var(--accent)">+ File ×<span id="batchSubCount">0</span></button>
         <button class="btn btn-primary" id="applySubBtn" onclick="applyAllEdits()" style="height:38px">✂ Appliquer</button>
       </div>
     </div>
@@ -1390,6 +1430,7 @@ td.td-file { max-width: 300px; }
         </div>
         <button class="btn btn-default" id="tcCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
         <button class="btn btn-default" id="queueTcBtn" onclick="addToQueue('transcode')" style="height:38px;border-color:var(--accent);color:var(--accent)">+ File</button>
+        <button class="btn btn-default" id="batchTcBtn" onclick="addBatchToQueue('transcode')" style="display:none;height:38px;border-color:var(--accent);color:var(--accent)">+ File ×<span id="batchTcCount">0</span></button>
         <button class="btn btn-primary" id="applyTcBtn" onclick="applyTranscode()" style="height:38px">⚙ Transcoder</button>
       </div>
     </div>
@@ -1746,7 +1787,7 @@ function applyFilters() {
   const tbody = document.getElementById('tbody');
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--txt3)">Aucun résultat</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--txt3)">Aucun résultat</td></tr>`;
     return;
   }
 
@@ -1889,7 +1930,13 @@ function applyFilters() {
   tbody.innerHTML = '';
   rows.forEach(f => {
     const tr = document.createElement('tr');
+    const isSelected = selectedFiles.has(f.path);
+    if (isSelected) tr.classList.add('row-selected');
+    tr.dataset.path = f.path;
     tr.innerHTML = `
+      <td class="col-check" onclick="event.stopPropagation()">
+        <input type="checkbox" class="row-cb" ${isSelected ? 'checked' : ''}>
+      </td>
       <td class="td-file">
         <span class="f-name" title="${esc(f.name)}">${esc(f.name)}</span>
         <span class="f-path" title="${esc(f.relative_path)}">${esc(f.relative_path)}</span>
@@ -1907,6 +1954,9 @@ function applyFilters() {
       <td>${statusCell(f)}</td>
       <td></td>
     `;
+    // Checkbox sélection
+    const cb = tr.querySelector('.row-cb');
+    cb.addEventListener('change', () => toggleRowSelect(f.path, cb.checked, tr));
     // Bouton éditer via addEventListener — aucun JSON dans le HTML
     const btn = document.createElement('button');
     btn.className = 'btn-edit';
@@ -1916,10 +1966,20 @@ function applyFilters() {
     tr.querySelector('td:last-child').appendChild(btn);
     tbody.appendChild(tr);
   });
+  // Sync "select all" checkbox
+  const selectAllCb = document.getElementById('selectAllCb');
+  if (selectAllCb) {
+    const total = rows.length;
+    const selCount = rows.filter(f => selectedFiles.has(f.path)).length;
+    selectAllCb.checked = total > 0 && selCount === total;
+    selectAllCb.indeterminate = selCount > 0 && selCount < total;
+  }
+  updateBatchBar();
 }
 
 // ── SORT ──────────────────────────────────────────────────
-const COL_KEYS = ['name','codec','height','bitrate_raw','size_raw','duration_raw','audio_codec','optimized'];
+// Le premier th est la case checkbox (pas de tri), on utilise null pour le sauter
+const COL_KEYS = [null,'name','codec','height','bitrate_raw','size_raw','duration_raw','audio_codec','optimized'];
 
 function sortBy(key) {
   sortDir = sortKey === key ? -sortDir : 1;
@@ -2208,36 +2268,69 @@ let currentTab = 'audio';
 let activeJobId = null;
 let activeSSE    = null;
 
+// ── Sélection multiple ────────────────────────────────────
+let selectedFiles = new Set(); // Set des paths sélectionnés
+let batchMode = false;
+let batchFiles = [];
+
 // ── File d'attente ──────────────────────────────────────
 let taskQueue    = [];
 let queueRunning = false;
 
 // ── Ouvrir / fermer ──────────────────────────────────────
-function openEditor(fileObj) {
+function openEditor(fileObj, batchFilesArr) {
+  batchMode  = !!(batchFilesArr && batchFilesArr.length > 1);
+  batchFiles = batchFilesArr || [];
+
   editorFile = fileObj;
   editorKeep    = new Set(fileObj.audio_streams.map(s => s.index));
   editorSubKeep = new Set((fileObj.subtitle_streams || []).map(s => s.index));
   activeJobId = null;
   if (activeSSE) { activeSSE.close(); activeSSE = null; }
 
-  document.getElementById('editorFilePath').textContent = fileObj.path;
+  // Titre et chemin
+  if (batchMode) {
+    document.getElementById('editorTitle').textContent = `Modifier ${batchFiles.length} fichiers`;
+    document.getElementById('editorFilePath').textContent = 'Basé sur : ' + fileObj.path;
+  } else {
+    document.getElementById('editorTitle').textContent = 'Éditer le fichier';
+    document.getElementById('editorFilePath').textContent = fileObj.path;
+  }
+
   document.getElementById('editorOverlay').classList.add('open');
-  loadCaps();  // Detecter GPU NVENC
+  loadCaps();
   document.getElementById('editWarn').style.display      = 'none';
+  document.getElementById('batchAudioWarn').style.display = batchMode ? '' : 'none';
+  document.getElementById('batchSubWarn').style.display   = batchMode ? '' : 'none';
   document.getElementById('editResult').style.display    = 'none';
   document.getElementById('editSubResult').style.display = 'none';
   document.getElementById('audioProgress').style.display = 'none';
   document.getElementById('subProgress').style.display   = 'none';
   document.getElementById('tcProgress').style.display    = 'none';
-  document.getElementById('applyAudioBtn').disabled = false;
+  document.getElementById('applyAudioBtn').disabled = batchMode;
+  document.getElementById('applyAudioBtn').style.display = batchMode ? 'none' : '';
   document.getElementById('applyAudioBtn').textContent = '✂ Appliquer';
   document.getElementById('applySubBtn').disabled = false;
+  document.getElementById('applySubBtn').style.display = batchMode ? 'none' : '';
   document.getElementById('applySubBtn').textContent = '✂ Appliquer';
   document.getElementById('applyTcBtn').disabled = false;
+  document.getElementById('applyTcBtn').style.display = batchMode ? 'none' : '';
   document.getElementById('applyTcBtn').innerHTML = '⚙ Transcoder';
+  // Boutons file individuelle vs batch
   ['queueAudioBtn','queueSubBtn','queueTcBtn'].forEach(id => {
-    const b = document.getElementById(id); if (b) b.disabled = false;
+    const b = document.getElementById(id);
+    if (b) { b.disabled = false; b.style.display = batchMode ? 'none' : ''; }
   });
+  ['batchAudioBtn','batchSubBtn','batchTcBtn'].forEach((id, i) => {
+    const b = document.getElementById(id);
+    if (b) b.style.display = batchMode ? '' : 'none';
+  });
+  if (batchMode) {
+    ['batchAudioCount','batchSubCount','batchTcCount'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = batchFiles.length;
+    });
+  }
   resetModalCloseBtns();
 
   switchTab('audio');
@@ -2247,13 +2340,14 @@ function openEditor(fileObj) {
 }
 
 function closeEditor() {
-  // Annuler le job en cours si pas terminé
   if (activeJobId && activeSSE) {
     fetch('/api/job/' + activeJobId + '/cancel', {method:'POST'}).catch(()=>{});
     activeSSE.close(); activeSSE = null; activeJobId = null;
   }
   document.getElementById('editorOverlay').classList.remove('open');
   editorFile = null;
+  batchMode = false;
+  batchFiles = [];
 }
 
 function cancelActiveJob() {
@@ -2306,6 +2400,100 @@ function setModalCloseBtnsDone() {
 
 function editorBgClick(e) {
   if (e.target === document.getElementById('editorOverlay')) closeEditor();
+}
+
+// ── Sélection multiple ────────────────────────────────────
+function toggleSelectAll(checked) {
+  document.querySelectorAll('#tbody tr[data-path]').forEach(tr => {
+    const path = tr.dataset.path;
+    const cb   = tr.querySelector('.row-cb');
+    if (checked) { selectedFiles.add(path); tr.classList.add('row-selected'); }
+    else          { selectedFiles.delete(path); tr.classList.remove('row-selected'); }
+    if (cb) cb.checked = checked;
+  });
+  updateBatchBar();
+}
+
+function toggleRowSelect(path, checked, tr) {
+  if (checked) { selectedFiles.add(path); tr.classList.add('row-selected'); }
+  else          { selectedFiles.delete(path); tr.classList.remove('row-selected'); }
+  const allRows = document.querySelectorAll('#tbody tr[data-path]');
+  const selectAllCb = document.getElementById('selectAllCb');
+  if (selectAllCb) {
+    const selCount = [...allRows].filter(r => selectedFiles.has(r.dataset.path)).length;
+    selectAllCb.checked = selCount === allRows.length && allRows.length > 0;
+    selectAllCb.indeterminate = selCount > 0 && selCount < allRows.length;
+  }
+  updateBatchBar();
+}
+
+function updateBatchBar() {
+  const bar = document.getElementById('batchBar');
+  if (!bar) return;
+  if (selectedFiles.size >= 2) {
+    document.getElementById('batchCount').textContent = selectedFiles.size;
+    bar.classList.add('visible');
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+function clearSelection() {
+  selectedFiles.clear();
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    tr.classList.remove('row-selected');
+    const cb = tr.querySelector('.row-cb');
+    if (cb) cb.checked = false;
+  });
+  const selectAllCb = document.getElementById('selectAllCb');
+  if (selectAllCb) { selectAllCb.checked = false; selectAllCb.indeterminate = false; }
+  updateBatchBar();
+}
+
+function openBatchEditor() {
+  const selected = files.filter(f => selectedFiles.has(f.path));
+  if (selected.length < 2) return;
+  // Utilise le premier fichier comme template de pistes
+  openEditor(selected[0], selected);
+}
+
+function addBatchToQueue(type) {
+  if (!batchMode || !editorFile || batchFiles.length < 2) return;
+  let addedCount = 0;
+  batchFiles.forEach(f => {
+    let params, label;
+    if (type === 'streams') {
+      const audioDel = (f.audio_streams || []).length - editorKeep.size;
+      const subDel   = (f.subtitle_streams || []).length - editorSubKeep.size;
+      if (audioDel === 0 && subDel === 0) return; // rien à faire
+      if ((f.audio_streams || []).length > 0 && editorKeep.size === 0) return; // garder au moins 1 audio
+      params = {
+        path:          f.path,
+        keep_audio:    [...editorKeep],
+        keep_subtitle: [...editorSubKeep],
+      };
+      const parts = [];
+      if (audioDel > 0) parts.push(audioDel + ' piste(s) audio');
+      if (subDel   > 0) parts.push(subDel   + ' sous-titre(s)');
+      label = '−' + parts.join(' · ');
+    } else {
+      const codec     = document.querySelector('input[name=tcCodec]:checked')?.value   || 'hevc';
+      const encoder   = document.querySelector('input[name=tcEncoder]:checked')?.value || 'cpu';
+      const crf       = parseInt(document.getElementById('tcCrf').value);
+      const preset    = document.getElementById('tcPreset').value;
+      const audio     = document.getElementById('tcAudio').value;
+      const overwrite = document.querySelector('input[name=tcOutput]:checked')?.value === 'overwrite';
+      params = { path: f.path, codec, encoder, crf, preset, audio, overwrite };
+      label  = 'Transcode → ' + (codec==='hevc'?'HEVC':'AV1') + (encoder==='gpu'?' NVENC':' CPU') + ' CRF' + crf;
+    }
+    // Doublon : mise à jour
+    const dup = taskQueue.find(t => t.file.path === f.path && t.type === type && t.status === 'pending');
+    if (dup) { dup.params = params; dup.label = label; addedCount++; return; }
+    taskQueue.push({ id: crypto.randomUUID(), file: f, type, params, label, status: 'pending', error: null });
+    addedCount++;
+  });
+  renderQueue();
+  toast(addedCount > 0 ? `✓ ${addedCount} fichier(s) ajouté(s) à la file` : 'Aucune modification à appliquer');
 }
 
 function switchTab(tab) {
@@ -2516,13 +2704,16 @@ function renderSubTrackList() {
   const container = document.getElementById('subTrackList');
   const streams   = editorFile.subtitle_streams || [];
 
+  const uncheckBtn = document.getElementById('uncheckAllSubBtn');
   if (streams.length === 0) {
     container.innerHTML = '<div style="padding:30px;text-align:center;color:var(--txt3)">Aucun sous-titre</div>';
     document.getElementById('editorSubSummary').innerHTML = '<span style="color:var(--txt3)">Ce fichier ne contient pas de sous-titres.</span>';
     document.getElementById('applySubBtn').disabled = true;
+    if (uncheckBtn) uncheckBtn.style.display = 'none';
     return;
   }
 
+  if (uncheckBtn) uncheckBtn.style.display = editorSubKeep.size > 0 ? '' : 'none';
   document.getElementById('applySubBtn').disabled = false;
   container.innerHTML = '';
   const list = document.createElement('div');
@@ -2561,6 +2752,11 @@ function renderSubTrackList() {
 function toggleSubTrack(idx) {
   if (editorSubKeep.has(idx)) editorSubKeep.delete(idx);
   else editorSubKeep.add(idx);
+  renderSubTrackList();
+}
+
+function uncheckAllSubs() {
+  editorSubKeep.clear();
   renderSubTrackList();
 }
 

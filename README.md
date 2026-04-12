@@ -10,8 +10,9 @@ Pointez vers un dossier, et MediaScan Toolbox scannera récursivement tous les f
 
 - **Transcoder** n'importe quel fichier en HEVC ou AV1, avec le CPU ou un GPU NVIDIA (NVENC)
 - **Éditer les pistes audio** — conserver ou supprimer des pistes individuelles avant ou après le transcodage
-- **Éditer les sous-titres** — conserver ou supprimer des pistes de sous-titres individuelles (suppression totale autorisée)
+- **Éditer les sous-titres** — conserver ou supprimer des pistes de sous-titres individuelles (suppression totale autorisée) ; bouton "Tout décocher" en un clic
 - **Combiner les modifications** — les changements audio et sous-titres sont appliqués ensemble en une seule passe ffmpeg
+- **Édition par lot** ��� cocher plusieurs fichiers dans le tableau et appliquer les mêmes modifications à tous (idéal pour les séries) ; chaque fichier est ajouté automatiquement à la file d'attente
 - **Suivre la progression** en temps réel via une barre de progression live (Server-Sent Events)
 - **Annuler** un job en cours à tout moment
 - **Gérer des favoris** — épingler des dossiers fréquents dans la sidebar, persistés en localStorage
@@ -79,8 +80,9 @@ From there you can:
 
 - **Transcode** any file to HEVC or AV1, with CPU or NVIDIA GPU (NVENC)
 - **Edit audio tracks** — keep or remove individual tracks before or after transcoding
-- **Edit subtitle tracks** — keep or remove individual subtitle tracks (removing all is allowed)
+- **Edit subtitle tracks** — keep or remove individual subtitle tracks (removing all is allowed); one-click "Uncheck all" button
 - **Combine edits** — audio and subtitle changes are applied together in a single ffmpeg pass
+- **Batch editing** — check multiple files in the table and apply the same edits to all of them (ideal for TV series); each file is automatically queued
 - **Monitor progress** in real time via a live progress bar (Server-Sent Events)
 - **Cancel** a running job at any time
 - **Manage favourites** — pin frequently used folders in the sidebar, persisted in localStorage
