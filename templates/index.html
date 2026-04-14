@@ -1470,6 +1470,38 @@ let sortKey  = 'name';
 let activeScanSSE   = null;
 let activeScanJobId = null;
 let scanRenderTimer = null;
+let scanSSETimer    = null; // timeout de garde pour le SSE de scan
+let editSSETimer    = null; // timeout de garde pour le SSE d'édition
+
+// ── DRAPEAUX LANGUE (partagé entre table et éditeur) ──────
+const LANG_FLAGS = {
+  fre:'🇫🇷', fra:'🇫🇷', french:'🇫🇷',
+  eng:'🇬🇧', en:'🇬🇧', english:'🇬🇧',
+  deu:'🇩🇪', ger:'🇩🇪', de:'🇩🇪',
+  spa:'🇪🇸', esp:'🇪🇸', es:'🇪🇸',
+  ita:'🇮🇹', it:'🇮🇹',
+  jpn:'🇯🇵', ja:'🇯🇵',
+  kor:'🇰🇷', ko:'🇰🇷',
+  zho:'🇨🇳', chi:'🇨🇳', zh:'🇨🇳',
+  por:'🇵🇹', pt:'🇵🇹',
+  rus:'🇷🇺', ru:'🇷🇺',
+  ara:'🇸🇦', ar:'🇸🇦',
+  nld:'🇳🇱', dut:'🇳🇱', nl:'🇳🇱',
+  pol:'🇵🇱', pl:'🇵🇱',
+  swe:'🇸🇪', sv:'🇸🇪',
+  nor:'🇳🇴', no:'🇳🇴',
+  dan:'🇩🇰', da:'🇩🇰',
+  fin:'🇫🇮', fi:'🇫🇮',
+  tur:'🇹🇷', tr:'🇹🇷',
+  hin:'🇮🇳', hi:'🇮🇳',
+  vie:'🇻🇳', vi:'🇻🇳',
+  tha:'🇹🇭', th:'🇹🇭',
+  ces:'🇨🇿', cze:'🇨🇿', cs:'🇨🇿',
+  hun:'🇭🇺', hu:'🇭🇺',
+  ron:'🇷🇴', rum:'🇷🇴', ro:'🇷🇴',
+  heb:'🇮🇱', he:'🇮🇱',
+  ukr:'🇺🇦', uk:'🇺🇦',
+};
 let sortDir  = 1;
 let browseAt = '';   // chemin actuellement affiché dans le browser
 
@@ -1657,6 +1689,13 @@ async function startScan() {
   setScanProgressBar(0, false);
 
   activeScanSSE = new EventSource(`/api/scan/${job_id}/stream`);
+  scanSSETimer = setTimeout(() => {
+    if (activeScanSSE) {
+      activeScanSSE.close(); activeScanSSE = null; activeScanJobId = null;
+      toast('Analyse interrompue (délai maximum de 30 min atteint)');
+      finishScan();
+    }
+  }, 1800000); // 30 minutes
   activeScanSSE.onmessage = e => {
     const msg = JSON.parse(e.data);
     if (msg.type === 'file') {
@@ -1674,6 +1713,7 @@ async function startScan() {
         }, 500);
       }
     } else if (msg.type === 'done') {
+      clearTimeout(scanSSETimer); scanSSETimer = null;
       activeScanSSE.close(); activeScanSSE = null; activeScanJobId = null;
       clearTimeout(scanRenderTimer); scanRenderTimer = null;
       renderStats(msg.stats);
@@ -1691,12 +1731,14 @@ async function startScan() {
       toast(`${files.length} fichier(s) analysé(s)`);
       finishScan();
     } else if (msg.type === 'error') {
+      clearTimeout(scanSSETimer); scanSSETimer = null;
       activeScanSSE.close(); activeScanSSE = null;
       toast('Erreur : ' + msg.error);
       finishScan();
     }
   };
   activeScanSSE.onerror = () => {
+    clearTimeout(scanSSETimer); scanSSETimer = null;
     activeScanSSE.close(); activeScanSSE = null;
     toast('Connexion perdue');
     finishScan();
@@ -1708,6 +1750,7 @@ function cancelScan() {
     fetch(`/api/scan/${activeScanJobId}/cancel`, {method:'POST'}).catch(()=>{});
     activeScanJobId = null;
   }
+  clearTimeout(scanSSETimer); scanSSETimer = null;
   if (activeScanSSE) { activeScanSSE.close(); activeScanSSE = null; }
   clearTimeout(scanRenderTimer); scanRenderTimer = null;
   if (files.length) { applyFilters(); document.getElementById('clearBtn').style.display = ''; }
@@ -1829,35 +1872,6 @@ function applyFilters() {
     </span>`;
   };
 
-  // Drapeaux langue
-  const LANG_FLAGS = {
-    fre:'🇫🇷', fra:'🇫🇷', french:'🇫🇷',
-    eng:'🇬🇧', en:'🇬🇧', english:'🇬🇧',
-    deu:'🇩🇪', ger:'🇩🇪', de:'🇩🇪',
-    spa:'🇪🇸', esp:'🇪🇸', es:'🇪🇸',
-    ita:'🇮🇹', it:'🇮🇹',
-    jpn:'🇯🇵', ja:'🇯🇵',
-    kor:'🇰🇷', ko:'🇰🇷',
-    zho:'🇨🇳', chi:'🇨🇳', zh:'🇨🇳',
-    por:'🇵🇹', pt:'🇵🇹',
-    rus:'🇷🇺', ru:'🇷🇺',
-    ara:'🇸🇦', ar:'🇸🇦',
-    nld:'🇳🇱', dut:'🇳🇱', nl:'🇳🇱',
-    pol:'🇵🇱', pl:'🇵🇱',
-    swe:'🇸🇪', sv:'🇸🇪',
-    nor:'🇳🇴', no:'🇳🇴',
-    dan:'🇩🇰', da:'🇩🇰',
-    fin:'🇫🇮', fi:'🇫🇮',
-    tur:'🇹🇷', tr:'🇹🇷',
-    hin:'🇮🇳', hi:'🇮🇳',
-    vie:'🇻🇳', vi:'🇻🇳',
-    tha:'🇹🇭', th:'🇹🇭',
-    ces:'🇨🇿', cze:'🇨🇿', cs:'🇨🇿',
-    hun:'🇭🇺', hu:'🇭🇺',
-    ron:'🇷🇴', rum:'🇷🇴', ro:'🇷🇴',
-    heb:'🇮🇱', he:'🇮🇱',
-    ukr:'🇺🇦', uk:'🇺🇦',
-  };
 
   // Audio avec drapeaux — format: "EAC3 5.1 FRE"
   const audioCell = raw => {
@@ -2009,7 +2023,6 @@ function esc(s) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function jss(v) { return JSON.stringify(v); }
 
 function fmtSize(b) {
   if (b < 1024)        return b + ' B';
@@ -2074,10 +2087,13 @@ function renderHistory() {
     chip.className = 'recent-chip';
     chip.title = dir;
     const name = dir.split('/').filter(Boolean).pop() || dir;
-    const safeDir = dir.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    chip.innerHTML =
-      '📁 ' + esc(name) +
-      '<button class="recent-chip-del" onclick="event.stopPropagation();removeFromHistory(\'' + safeDir + '\')" title="Retirer">✕</button>';
+    chip.textContent = '📁 ' + name;
+    const delBtn = document.createElement('button');
+    delBtn.className = 'recent-chip-del';
+    delBtn.title = 'Retirer';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', e => { e.stopPropagation(); removeFromHistory(dir); });
+    chip.appendChild(delBtn);
     chip.addEventListener('click', () => {
       document.getElementById('pathInput').value = dir;
       updateFavBtn();
@@ -2145,14 +2161,18 @@ function renderFavs() {
   container.innerHTML = '';
   favs.forEach(dir => {
     const name    = dir.split('/').filter(Boolean).pop() || dir;
-    const safeDir = dir.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     const item = document.createElement('div');
     item.className = 'fav-item';
     item.title = dir;
     item.innerHTML =
       '<span style="font-size:13px;flex-shrink:0;color:var(--amber)">★</span>' +
-      '<span class="fav-item-name">' + esc(name) + '</span>' +
-      '<button class="fav-item-del" onclick="event.stopPropagation();removeFav(\'' + safeDir + '\')" title="Retirer">✕</button>';
+      '<span class="fav-item-name">' + esc(name) + '</span>';
+    const delFavBtn = document.createElement('button');
+    delFavBtn.className = 'fav-item-del';
+    delFavBtn.title = 'Retirer';
+    delFavBtn.textContent = '✕';
+    delFavBtn.addEventListener('click', e => { e.stopPropagation(); removeFav(dir); });
+    item.appendChild(delFavBtn);
     item.addEventListener('click', () => {
       document.getElementById('pathInput').value = dir;
       updateFavBtn();
@@ -2237,29 +2257,6 @@ renderFavs();
 updateFavBtn();
 
 // ── AUDIO EDITOR ─────────────────────────────────────────
-const LANG_FLAGS_EDIT = {
-  fre:'🇫🇷',fra:'🇫🇷',french:'🇫🇷',
-  eng:'🇬🇧',en:'🇬🇧',english:'🇬🇧',
-  deu:'🇩🇪',ger:'🇩🇪',de:'🇩🇪',
-  spa:'🇪🇸',esp:'🇪🇸',es:'🇪🇸',
-  ita:'🇮🇹',it:'🇮🇹',
-  jpn:'🇯🇵',ja:'🇯🇵',
-  kor:'🇰🇷',ko:'🇰🇷',
-  zho:'🇨🇳',chi:'🇨🇳',zh:'🇨🇳',
-  por:'🇵🇹',pt:'🇵🇹',
-  rus:'🇷🇺',ru:'🇷🇺',
-  ara:'🇸🇦',ar:'🇸🇦',
-  nld:'🇳🇱',dut:'🇳🇱',nl:'🇳🇱',
-  pol:'🇵🇱',pl:'🇵🇱',
-  swe:'🇸🇪',sv:'🇸🇪',
-  nor:'🇳🇴',no:'🇳🇴',
-  dan:'🇩🇰',da:'🇩🇰',
-  fin:'🇫🇮',fi:'🇫🇮',
-  tur:'🇹🇷',tr:'🇹🇷',
-  hin:'🇮🇳',hi:'🇮🇳',
-  vie:'🇻🇳',vi:'🇻🇳',
-  ukr:'🇺🇦',uk:'🇺🇦',
-};
 
 let editorFile = null;
 let editorKeep = new Set();
@@ -2274,8 +2271,11 @@ let batchMode = false;
 let batchFiles = [];
 
 // ── File d'attente ──────────────────────────────────────
-let taskQueue    = [];
-let queueRunning = false;
+let taskQueue      = [];
+let queueRunning   = false;
+let queueStartTime = null;  // horodatage de démarrage de la file
+let taskStartTime  = null;  // horodatage de la tâche en cours
+let taskDurations  = [];    // durées (ms) des tâches terminées, pour l'ETA
 
 // ── Ouvrir / fermer ──────────────────────────────────────
 function openEditor(fileObj, batchFilesArr) {
@@ -2522,7 +2522,7 @@ function renderTrackList() {
 
   streams.forEach(s => {
     const keeping = editorKeep.has(s.index);
-    const flag    = LANG_FLAGS_EDIT[(s.lang||'').toLowerCase()] || '';
+    const flag    = LANG_FLAGS[(s.lang||'').toLowerCase()] || '';
     const metaParts = [];
     if (s.ch_str) metaParts.push(s.ch_str + ' canaux');
     if (s.codec)  metaParts.push(s.codec);
@@ -2643,6 +2643,14 @@ async function applyAllEdits() {
 
   activeJobId = d.job_id;
   activeSSE   = new EventSource('/api/job/' + d.job_id + '/stream');
+  editSSETimer = setTimeout(() => {
+    if (activeSSE) {
+      activeSSE.close(); activeSSE = null; activeJobId = null;
+      setModalCloseBtnsDone();
+      showAudioError('Délai maximum atteint (60 min)');
+      showSubError('Délai maximum atteint (60 min)');
+    }
+  }, 3600000); // 60 minutes
   setModalCloseBtnsRunning();
 
   activeSSE.onmessage = e => {
@@ -2651,6 +2659,7 @@ async function applyAllEdits() {
       setProg(msg.progress, `Traitement… ${msg.progress}%`);
       if (msg.line) appendLog(logEl, msg.line);
     } else if (msg.type === 'done') {
+      clearTimeout(editSSETimer); editSSETimer = null;
       activeSSE.close(); activeSSE = null; activeJobId = null;
       setProg(100, 'Terminé !');
       const idx = files.findIndex(f => f.path === editorFile.path);
@@ -2671,6 +2680,7 @@ async function applyAllEdits() {
       subBtn.disabled   = false; subBtn.textContent   = '✂ Appliquer';
       setModalCloseBtnsDone();
     } else if (msg.type === 'error') {
+      clearTimeout(editSSETimer); editSSETimer = null;
       activeSSE.close(); activeSSE = null; activeJobId = null;
       setModalCloseBtnsDone();
       showAudioError(msg.error);
@@ -2678,6 +2688,7 @@ async function applyAllEdits() {
     }
   };
   activeSSE.onerror = () => {
+    clearTimeout(editSSETimer); editSSETimer = null;
     activeSSE.close(); activeSSE = null; activeJobId = null;
     setModalCloseBtnsDone();
     showAudioError('Connexion SSE perdue');
@@ -2721,7 +2732,7 @@ function renderSubTrackList() {
 
   streams.forEach(s => {
     const keeping = editorSubKeep.has(s.index);
-    const flag    = LANG_FLAGS_EDIT[(s.lang||'').toLowerCase()] || '';
+    const flag    = LANG_FLAGS[(s.lang||'').toLowerCase()] || '';
     const metaParts = [s.codec];
     if (s.title) metaParts.push(s.title);
 
@@ -3139,9 +3150,21 @@ function renderQueue() {
   footer.style.display = '';
 
   if (queueRunning) {
-    progLbl.textContent = (doneCount + errorCount) + '/' + taskQueue.length + ' tâches';
+    const currentNum = doneCount + errorCount + 1;
+    let etaStr = '';
+    if (taskDurations.length >= 1 && (pendingCount + runningCount) > 0) {
+      const avgMs = taskDurations.reduce((a, b) => a + b, 0) / taskDurations.length;
+      const eta   = new Date(Date.now() + avgMs * (pendingCount + runningCount));
+      etaStr = ' · Fin ~' + eta.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+    }
+    progLbl.textContent = currentNum + '/' + taskQueue.length + ' en cours' + etaStr;
+  } else if (pendingCount === 0 && taskQueue.length > 0) {
+    const parts = [];
+    if (doneCount  > 0) parts.push(doneCount  + ' terminée(s)');
+    if (errorCount > 0) parts.push(errorCount + ' erreur(s)');
+    progLbl.textContent = '✓ ' + parts.join(' · ');
   } else {
-    progLbl.textContent = taskQueue.length + ' tâche(s) en attente';
+    progLbl.textContent = pendingCount + ' tâche(s) en attente';
   }
 
   execBtn.disabled    = queueRunning || pendingCount === 0;
@@ -3183,7 +3206,9 @@ async function executeQueue() {
   const pending = taskQueue.filter(t => t.status === 'pending');
   if (pending.length === 0) return;
 
-  queueRunning = true;
+  queueRunning   = true;
+  queueStartTime = Date.now();
+  taskDurations  = [];
   renderQueue();
   document.getElementById('queuePanel').classList.remove('queue-collapsed');
   await executeNextTask();
@@ -3192,7 +3217,8 @@ async function executeQueue() {
 async function executeNextTask() {
   const task = taskQueue.find(t => t.status === 'pending');
   if (!task) {
-    queueRunning = false;
+    queueRunning  = false;
+    taskStartTime = null;
     const errorCount = taskQueue.filter(t => t.status === 'error').length;
     const doneCount  = taskQueue.filter(t => t.status === 'done').length;
     renderQueue();
@@ -3202,7 +3228,8 @@ async function executeNextTask() {
     return;
   }
 
-  task.status = 'running';
+  task.status   = 'running';
+  taskStartTime = Date.now();
   renderQueue();
 
   try {
@@ -3216,6 +3243,12 @@ async function executeNextTask() {
     task.error  = e.message || 'Erreur inconnue';
     renderQueue();
   }
+
+  // Enregistrer la durée réelle pour l'ETA (uniquement si succès)
+  if (task.status === 'done' && taskStartTime !== null) {
+    taskDurations.push(Date.now() - taskStartTime);
+  }
+  taskStartTime = null;
 
   await executeNextTask();
 }
@@ -3236,6 +3269,9 @@ function runStreamsTask(task) {
 
     const sse = new EventSource('/api/job/' + d.job_id + '/stream');
     const baseLabel = task.label.replace(/ \d+%$/, '');
+    const sseTimer = setTimeout(() => {
+      sse.close(); reject(new Error('Délai maximum atteint (2h)'));
+    }, 7200000); // 2 heures
 
     sse.onmessage = e => {
       const msg = JSON.parse(e.data);
@@ -3243,6 +3279,7 @@ function runStreamsTask(task) {
         task.label = baseLabel + ' ' + msg.progress + '%';
         renderQueue();
       } else if (msg.type === 'done') {
+        clearTimeout(sseTimer);
         sse.close();
         task.status = 'done';
         task.label  = baseLabel;
@@ -3254,11 +3291,12 @@ function runStreamsTask(task) {
         renderQueue();
         resolve();
       } else if (msg.type === 'error') {
+        clearTimeout(sseTimer);
         sse.close();
         reject(new Error(msg.error || 'Erreur ffmpeg'));
       }
     };
-    sse.onerror = () => { sse.close(); reject(new Error('Connexion SSE perdue')); };
+    sse.onerror = () => { clearTimeout(sseTimer); sse.close(); reject(new Error('Connexion SSE perdue')); };
   });
 }
 
@@ -3278,6 +3316,9 @@ function runTranscodeTask(task) {
 
     const sse = new EventSource('/api/job/' + d.job_id + '/stream');
     const baseLabel = task.label.replace(/ \d+%$/, '');
+    const sseTimer = setTimeout(() => {
+      sse.close(); reject(new Error('Délai maximum atteint (2h)'));
+    }, 7200000); // 2 heures
 
     sse.onmessage = e => {
       const msg = JSON.parse(e.data);
@@ -3285,6 +3326,7 @@ function runTranscodeTask(task) {
         task.label = baseLabel + ' ' + msg.progress + '%';
         renderQueue();
       } else if (msg.type === 'done') {
+        clearTimeout(sseTimer);
         sse.close();
         task.status = 'done';
         task.label  = baseLabel;
@@ -3301,11 +3343,12 @@ function runTranscodeTask(task) {
         renderQueue();
         resolve();
       } else if (msg.type === 'error') {
+        clearTimeout(sseTimer);
         sse.close();
         reject(new Error(msg.error || 'Erreur ffmpeg'));
       }
     };
-    sse.onerror = () => { sse.close(); reject(new Error('Connexion SSE perdue')); };
+    sse.onerror = () => { clearTimeout(sseTimer); sse.close(); reject(new Error('Connexion SSE perdue')); };
   });
 }
 
