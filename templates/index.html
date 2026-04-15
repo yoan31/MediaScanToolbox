@@ -778,7 +778,7 @@ td.td-file { max-width: 300px; }
 .queue-header {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 14px;
-  cursor: pointer;
+  cursor: move;
   background: var(--panel2);
   border-bottom: 1px solid var(--line);
   user-select: none;
@@ -935,6 +935,7 @@ tbody tr.row-selected:hover { background: rgba(108,143,255,.16) !important; }
 .batch-bar.visible { display: flex; }
 .batch-bar-label { font-size: 13px; color: var(--txt2); flex: 1; }
 .batch-bar-label strong { color: var(--accent); }
+.batch-bar--bottom { margin-bottom: 0; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -1160,6 +1161,14 @@ tbody tr.row-selected:hover { background: rgba(108,143,255,.16) !important; }
           </table>
         </div>
 
+        <div class="batch-bar batch-bar--bottom" id="batchBarBottom">
+          <span class="batch-bar-label">
+            <strong id="batchCountBottom">0</strong> fichiers sélectionnés
+          </span>
+          <button class="btn btn-default btn-sm" onclick="clearSelection()" style="color:var(--txt3);height:28px">Désélectionner</button>
+          <button class="btn btn-primary" style="height:28px;font-size:12px" onclick="openBatchEditor()">✏ Éditer la sélection</button>
+        </div>
+
       </div>
     </div>
 
@@ -1219,6 +1228,13 @@ tbody tr.row-selected:hover { background: rgba(108,143,255,.16) !important; }
       <button class="etab" id="tab-transcode" onclick="switchTab('transcode')">⚙ Transcoder</button>
     </div>
 
+    <!-- ── COMPTEUR DE GAIN GLOBAL ── -->
+    <div id="savingsBar" style="display:none;padding:7px 20px;background:rgba(34,197,94,.07);border-bottom:1px solid rgba(34,197,94,.2);flex-direction:row;align-items:center;gap:8px">
+      <span style="font-size:14px">💾</span>
+      <span id="savingsText" style="font-size:12px;color:var(--green);font-weight:600;flex:1"></span>
+      <span id="savingsApprox" style="font-size:10px;color:var(--txt3);font-style:italic"></span>
+    </div>
+
     <!-- ── ONGLET AUDIO ── -->
     <div id="panel-audio">
       <div class="edit-warn" id="editWarn">⚠ Vous devez conserver au moins une piste audio.</div>
@@ -1245,7 +1261,7 @@ tbody tr.row-selected:hover { background: rgba(108,143,255,.16) !important; }
         <div style="font-size:12px;color:var(--txt3);flex:1">
           Décochez les pistes à <strong style="color:var(--red)">supprimer</strong>. Sans réencodage.
         </div>
-        <button class="btn btn-default" id="audioCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
+        <button class="btn btn-default" id="audioCloseBtn" onclick="closeEditor()" style="height:38px">Fermer</button>
         <button class="btn btn-default" id="queueAudioBtn" onclick="addToQueue('streams')" style="height:38px;border-color:var(--accent);color:var(--accent)">+ File</button>
         <button class="btn btn-default" id="batchAudioBtn" onclick="addBatchToQueue('streams')" style="display:none;height:38px;border-color:var(--accent);color:var(--accent)">+ File ×<span id="batchAudioCount">0</span></button>
         <button class="btn btn-primary" id="applyAudioBtn" onclick="applyAllEdits()" style="height:38px">✂ Appliquer</button>
@@ -1280,7 +1296,7 @@ tbody tr.row-selected:hover { background: rgba(108,143,255,.16) !important; }
         <div style="font-size:12px;color:var(--txt3);flex:1">
           Décochez les pistes à <strong style="color:var(--red)">supprimer</strong>. Tout supprimer est autorisé. Sans réencodage.
         </div>
-        <button class="btn btn-default" id="subtitleCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
+        <button class="btn btn-default" id="subtitleCloseBtn" onclick="closeEditor()" style="height:38px">Fermer</button>
         <button class="btn btn-default" id="queueSubBtn" onclick="addToQueue('streams')" style="height:38px;border-color:var(--accent);color:var(--accent)">+ File</button>
         <button class="btn btn-default" id="batchSubBtn" onclick="addBatchToQueue('streams')" style="display:none;height:38px;border-color:var(--accent);color:var(--accent)">+ File ×<span id="batchSubCount">0</span></button>
         <button class="btn btn-primary" id="applySubBtn" onclick="applyAllEdits()" style="height:38px">✂ Appliquer</button>
@@ -1428,7 +1444,7 @@ tbody tr.row-selected:hover { background: rgba(108,143,255,.16) !important; }
         <div style="font-size:12px;color:var(--txt3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="tcFootNote">
           L'original sera remplacé par le fichier transcodé.
         </div>
-        <button class="btn btn-default" id="tcCloseBtn" onclick="closeEditor()" style="height:38px">Annuler</button>
+        <button class="btn btn-default" id="tcCloseBtn" onclick="closeEditor()" style="height:38px">Fermer</button>
         <button class="btn btn-default" id="queueTcBtn" onclick="addToQueue('transcode')" style="height:38px;border-color:var(--accent);color:var(--accent)">+ File</button>
         <button class="btn btn-default" id="batchTcBtn" onclick="addBatchToQueue('transcode')" style="display:none;height:38px;border-color:var(--accent);color:var(--accent)">+ File ×<span id="batchTcCount">0</span></button>
         <button class="btn btn-primary" id="applyTcBtn" onclick="applyTranscode()" style="height:38px">⚙ Transcoder</button>
@@ -2371,7 +2387,7 @@ function cancelActiveJob() {
 function resetModalCloseBtns() {
   ['audioCloseBtn','subtitleCloseBtn','tcCloseBtn'].forEach(id => {
     const b = document.getElementById(id);
-    b.textContent = 'Annuler';
+    b.textContent = 'Fermer';
     b.onclick = closeEditor;
   });
 }
@@ -2428,13 +2444,17 @@ function toggleRowSelect(path, checked, tr) {
 }
 
 function updateBatchBar() {
-  const bar = document.getElementById('batchBar');
+  const bar    = document.getElementById('batchBar');
+  const barBot = document.getElementById('batchBarBottom');
   if (!bar) return;
   if (selectedFiles.size >= 2) {
-    document.getElementById('batchCount').textContent = selectedFiles.size;
+    document.getElementById('batchCount').textContent       = selectedFiles.size;
+    document.getElementById('batchCountBottom').textContent = selectedFiles.size;
     bar.classList.add('visible');
+    if (barBot) barBot.classList.add('visible');
   } else {
     bar.classList.remove('visible');
+    if (barBot) barBot.classList.remove('visible');
   }
 }
 
@@ -2504,6 +2524,56 @@ function switchTab(tab) {
   document.getElementById('tab-audio').classList.toggle('active',    tab==='audio');
   document.getElementById('tab-subtitle').classList.toggle('active', tab==='subtitle');
   document.getElementById('tab-transcode').classList.toggle('active',tab==='transcode');
+  updateSavingsCounter();
+}
+
+function updateSavingsCounter() {
+  const bar = document.getElementById('savingsBar');
+  if (!bar || !editorFile) return;
+
+  // Caché sur l'onglet transcode
+  if (currentTab === 'transcode') { bar.style.display = 'none'; return; }
+
+  const audioStreams = editorFile.audio_streams || [];
+  const subStreams   = editorFile.subtitle_streams || [];
+  const dur          = editorFile.duration_raw || 0;
+
+  // ── Gain audio ────────────────────────────────────────
+  let audioBytes = 0, audioApprox = false, audioHasData = false;
+  audioStreams.forEach(s => {
+    if (editorKeep.has(s.index)) return;
+    if (s.size_exact != null) {
+      audioBytes += s.size_exact;
+      audioHasData = true;
+    } else if (s.bitrate_raw && dur) {
+      audioBytes += Math.round(s.bitrate_raw * dur / 8);
+      audioHasData = true;
+      audioApprox = true;
+    }
+  });
+  const audioDel = audioStreams.filter(s => !editorKeep.has(s.index)).length;
+
+  // ── Gain sous-titres (comptage uniquement, pas de taille dispo) ──
+  const subDel = subStreams.filter(s => !editorSubKeep.has(s.index)).length;
+
+  if (audioDel === 0 && subDel === 0) { bar.style.display = 'none'; return; }
+
+  // ── Construction du texte ─────────────────────────────
+  const parts = [];
+  if (audioDel > 0) {
+    if (audioHasData) {
+      parts.push((audioApprox ? '~' : '') + fmtSize(audioBytes) + '\u00a0audio');
+    } else {
+      parts.push(audioDel + '\u00a0piste(s) audio (taille inconnue)');
+    }
+  }
+  if (subDel > 0) {
+    parts.push(subDel + '\u00a0sous-titre(s)');
+  }
+
+  document.getElementById('savingsText').textContent  = 'Gain estimé\u00a0: ' + parts.join('\u00a0·\u00a0');
+  document.getElementById('savingsApprox').textContent = audioApprox ? 'estimation bitrate' : '';
+  bar.style.display = 'flex';
 }
 
 // ── PISTES AUDIO ─────────────────────────────────────────
@@ -2557,6 +2627,7 @@ function renderTrackList() {
 
   container.appendChild(list);
   updateAudioSummary();
+  updateSavingsCounter();
 }
 
 function toggleTrack(idx) {
@@ -2758,6 +2829,7 @@ function renderSubTrackList() {
 
   container.appendChild(list);
   updateSubSummary();
+  updateSavingsCounter();
 }
 
 function toggleSubTrack(idx) {
@@ -3116,6 +3188,51 @@ function clearDoneTasks() {
 function toggleQueuePanel() {
   document.getElementById('queuePanel').classList.toggle('queue-collapsed');
 }
+
+// ── DRAG DU PANNEAU FILE D'ATTENTE ─────────────────────────
+(function initQueueDrag() {
+  const panel  = document.getElementById('queuePanel');
+  const header = panel.querySelector('.queue-header');
+  let dragging = false, startX, startY, startLeft, startTop;
+
+  header.addEventListener('mousedown', function(e) {
+    // Ignorer si clic sur le toggle (collapse)
+    if (e.target.classList.contains('queue-toggle-icon')) return;
+    dragging = true;
+
+    // Convertir position courante (bottom/right → top/left)
+    const rect = panel.getBoundingClientRect();
+    panel.style.right  = 'auto';
+    panel.style.bottom = 'auto';
+    panel.style.left   = rect.left + 'px';
+    panel.style.top    = rect.top  + 'px';
+
+    startX    = e.clientX;
+    startY    = e.clientY;
+    startLeft = rect.left;
+    startTop  = rect.top;
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup',   onMouseUp);
+    e.preventDefault();
+  });
+
+  function onMouseMove(e) {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const newLeft = Math.max(0, Math.min(window.innerWidth  - panel.offsetWidth,  startLeft + dx));
+    const newTop  = Math.max(0, Math.min(window.innerHeight - panel.offsetHeight, startTop  + dy));
+    panel.style.left = newLeft + 'px';
+    panel.style.top  = newTop  + 'px';
+  }
+
+  function onMouseUp() {
+    dragging = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup',   onMouseUp);
+  }
+})();
 
 function renderQueue() {
   const panel    = document.getElementById('queuePanel');
